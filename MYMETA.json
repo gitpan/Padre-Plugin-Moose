@@ -4,7 +4,7 @@
       "Ahmad M. Zawawi <ahmad.zawawi@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.112621",
+   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.113640",
    "license" : [
       "perl_5"
    ],
@@ -23,7 +23,7 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "6.62",
+            "ExtUtils::MakeMaker" : "6.6302",
             "Test::More" : "0.47"
          }
       },
@@ -34,7 +34,7 @@
       },
       "runtime" : {
          "requires" : {
-            "Moose" : "2.0401",
+            "Moose" : "2.0402",
             "Padre" : "0.94",
             "perl" : "5.008"
          }

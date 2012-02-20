@@ -1,5 +1,12 @@
 Changes for Padre-Plugin-Moose
 
-0.01  2012.2.15
+0.02  2012.2.20
+	The following feature list is here: (AZAWAWI)
+		- Added Moose website/manual/cookbook hyperlinks
+		- Added "Add class/role/attribute/subtype" tabs
+		- Added code generation readonly preview editor
+		- Added comments/main code generation checkboxes
+		- Added insert code
 
-	- Initial release to CPAN.
+0.01  2012.2.15
+	- Initial release to CPAN (AZAWAWI)

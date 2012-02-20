@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Padre::Plugin ();
 
@@ -14,69 +14,45 @@ our @ISA = 'Padre::Plugin';
 # Padre Integration
 
 sub padre_interfaces {
-    'Padre::Plugin' => 0.94;
+	'Padre::Plugin' => 0.94;
 }
 
 ######################################################################
 # Padre::Plugin Methods
 
 sub plugin_name {
-    Wx::gettext('Moose');
+	Wx::gettext('Moose');
 }
 
 sub plugin_disable {
-    require Padre::Unload;
-    Padre::Unload->unload('Padre::Plugin::Moose');
-    Padre::Unload->unload('Moose');
+
+	# TODO uncomment once Padre 0.96 is released
+	#$_[0]->unload(
+	#    ( 'Padre::Plugin::Moose', 'Padre::Plugin::Moose::Main', 'Moose' ) );
+	for my $package ( ( 'Padre::Plugin::Moose', 'Padre::Plugin::Moose::Main', 'Moose' ) ) {
+		require Padre::Unload;
+		Padre::Unload->unload($package);
+	}
 }
 
 # The command structure to show in the Plugins menu
-sub menu_plugins_simple {
-    my $self = shift;
-    return $self->plugin_name => [
-        Wx::gettext('New Moose Class') => sub {
-            return;
-        },
+sub menu_plugins {
+	my $self      = shift;
+	my $main      = $self->main;
+	my $menu_item = Wx::MenuItem->new( undef, -1, $self->plugin_name . "\tF8", );
+	Wx::Event::EVT_MENU(
+		$main,
+		$menu_item,
+		sub {
+			eval {
+				require Padre::Plugin::Moose::Main;
+				Padre::Plugin::Moose::Main->new($main)->Show;
+			};
+			print "Error: $@" if $@;
+		},
+	);
 
-        '---' => undef,
-
-        Wx::gettext('Moose Online References') => [
-            Wx::gettext('Moose Manual') => sub {
-                Padre::Wx::launch_browser('http://search.cpan.org/~doy/Moose-2.0402/lib/Moose/Manual.pod');
-            },
-            Wx::gettext('Moose Website') => sub {
-                Padre::Wx::launch_browser('http://moose.iinteractive.com/');
-            },
-            Wx::gettext('Moose Community Live Support') => sub {
-                Padre::Wx::launch_irc( 'irc.perl.org' => 'moose' );
-            },
-        ],
-
-        '---' => undef,
-
-        Wx::gettext('About') => sub {
-            $self->on_show_about;
-        },
-    ];
-}
-
-sub on_show_about {
-    require Moose;
-    require Padre::Unload;
-    my $about = Wx::AboutDialogInfo->new;
-    $about->SetName('Padre::Plugin::Moose');
-    $about->SetDescription(
-        Wx::gettext('Moose support for Padre') . "\n\n"
-          . sprintf(
-            Wx::gettext('This system is running Moose version %s'),
-            $Moose::VERSION
-          )
-          . "\n"
-    );
-    $about->SetVersion($Padre::Plugin::Moose::VERSION);
-    Padre::Unload->unload('Moose');
-    Wx::AboutBox($about);
-    return;
+	return $menu_item;
 }
 
 1;
@@ -99,27 +75,11 @@ Then use it via L<Padre>, The Perl IDE.
 
 Once you enable this Plugin under Padre, you'll get a brand new menu with the following options:
 
-=head2 'New Moose Application'
+=head2 Moose
 
-This options lets you create a new Moose application.
-
-=head2 Start Web Server
-
-This option will automatically spawn your application's development web server. Once it's started, it will ask to open your default web browser to view your application running.
-
-Note that this works like Padre's "run" menu option, so any other execution it will be disabled while your server is running.
-
-=head2 Stop Web Server
-
-This option will stop the development web server for you.
-
-=head2 Moose Online References
-
-This menu option contains a series of external reference links on Moose. Clicking on each of them will point your default web browser to their websites.
-
-=head2 About
-
-Shows a nice about box with this module's name and version.
+Opens up a user-friendly dialog where you can add classes, roles, attributes and subtypes. 
+The dialog contains a tree of stuff that are created while it is open and a preview of
+generated Perl code. It also contains links to Moose manual, cookbook and website.
 
 =head1 BUGS
 
@@ -167,17 +127,13 @@ L<Moose>, L<Padre>
 
 =item *
 
-Breno G. de Oliveira <garu@cpan.org>
-
-=item *
-
 Ahmad M. Zawawi <ahmad.zawawi@gmail.com>
 
 =back
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2010 by Breno G. de Oliveira.
+This software is copyright (c) 2012 by Ahmad M. Zawawi
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
