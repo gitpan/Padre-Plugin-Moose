@@ -4,8 +4,13 @@ use 5.008;
 use strict;
 use warnings;
 use Padre::Plugin::Moose::FBP::Main ();
+use Padre::Plugin::Moose::Program ();
+use Padre::Plugin::Moose::Class ();
+use Padre::Plugin::Moose::Role ();
+use Padre::Plugin::Moose::Attribute ();
+use Padre::Plugin::Moose::Subtype ();
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 our @ISA     = qw{
 	Padre::Plugin::Moose::FBP::Main
 };
@@ -17,12 +22,30 @@ sub new {
 	my $self = $class->SUPER::new($main);
 	$self->CenterOnParent;
 
+	$self->{class_count} = 1;
+	$self->{role_count} = 1;
+	$self->{attribute_count} = 1;
+	$self->{subtype_count} = 1;
+	
+	$self->{program} = Padre::Plugin::Moose::Program->new;
+	$self->{current_element} = undef;
+
 	# Defaults
-	$self->{namespace_autoclean_checkbox}->SetValue(1);
-	$self->{make_immutable_checkbox}->SetValue(1);
 	$self->{comments_checkbox}->SetValue(1);
 	$self->{sample_code_checkbox}->SetValue(1);
-	$self->{treebook}->SetSelection(0);
+	$self->{add_attribute_button}->Enable(0);
+	$self->{add_subtype_button}->Enable(0);
+	
+	# TODO Bug Alias to fix the wxFormBuilder bug regarding this one
+	my $grid = $self->{grid};
+	$grid->SetRowLabelSize(0);
+
+	for my $row (0..$grid->GetNumberRows-1) {
+		$grid->SetReadOnly($row, 0);
+	}
+
+	# Hide it!
+	$grid->Show(0);
 
 	# Setup preview editor
 	my $preview = $self->{preview};
@@ -62,130 +85,212 @@ sub on_about_button_clicked {
 	return;
 }
 
-sub on_add_class_button {
+sub show_code_in_preview {
 	my $self = shift;
-	
-	my $class = $self->{class_text}->GetValue;
-	my $superclass = $self->{superclass_text}->GetValue;
-	my $roles = $self->{roles_text}->GetValue;
-	my $namespace_autoclean = $self->{namespace_autoclean_checkbox}->IsChecked;
-	my $make_immutable = $self->{make_immutable_checkbox}->IsChecked;
-	my $comments = $self->{comments_checkbox}->IsChecked;
-	my $sample_code = $self->{sample_code_checkbox}->IsChecked;
 
-	$class =~ s/^\s+|\s+$//g;
-	$superclass =~ s/^\s+|\s+$//g;
-	$roles =~ s/^\s+|\s+$//g;
-	my @roles = split /,/, $roles;
+	eval {
+		# Generate code
+		my $code = $self->{program}->to_code(
+			$self->{comments_checkbox}->IsChecked, 
+			$self->{sample_code_checkbox}->IsChecked);
 
-	if($class eq '') {
-		$self->main->error(Wx::gettext('Class name cannot be empty'));
-		$self->{class_text}->SetFocus();
-		return;
+		# And show it in preview editor
+		my $preview = $self->{preview};
+		$preview->SetReadOnly(0);
+		$preview->SetText($code);
+		$preview->SetReadOnly(1);
+
+		# Update tree
+		$self->update_tree;
+	};
+	if($@) {
+		$self->main->error(Wx::gettext("Error: " . $@));
 	}
+}
 
-	my $code = "package $class;\n";
-
-	if($namespace_autoclean) {
-		$code .= "\nuse namespace::clean;";
-		$code .= $comments
-			? " # Keep imports out of your namespace\n"
-			: "\n";
-	}
-
-	$code .= "\nuse Moose;";
-	$code .= $comments
-		? " # automatically turns on strict and warnings\n"
-		: "\n";
-	$code .= "\nextends '$superclass';\n" if $superclass ne '';
-
-	$code .= "\n" if scalar @roles;
-	for my $role (@roles) {
-		$code .= "with '$role';\n";
-	}
-
-	if($make_immutable) {
-		$code .= "\n__PACKAGE__->meta->make_immutable;";
-		$code .= $comments
-			? " # Makes it faster at the cost of startup time\n"
-			: "\n";
-	}
-	$code .= "\n1;\n";
-
-	if($sample_code) {
-		$code .= "\npackage main;\n";
-		$code .= "\nmy \$o = $class->new;\n";
-	}
+sub update_tree {
+	my $self = shift;
 
 	my $tree = $self->{tree};
 	$tree->DeleteAllItems;
-	my $root   = $tree->AddRoot(
-		$class,
+
+	my $program = $self->{program};
+	my $program_node  = $tree->AddRoot(
+		Wx::gettext('Program'),
 		-1,
 		-1,
-		Wx::TreeItemData->new('')
+		Wx::TreeItemData->new($program)
 	);
 
-	my $preview = $self->{preview};
-	$preview->SetReadOnly(0);
-	$preview->SetText($code);
-	$preview->SetReadOnly(1);
+	# Set up the events
+	Wx::Event::EVT_TREE_SEL_CHANGED(
+		$tree, $tree,
+		
+		sub {
+			my $item   = $_[1]->GetItem         or return;
+			my $element   = $tree->GetPlData($item) or return;
+
+			my $is_class = $element->isa('Padre::Plugin::Moose::Class');
+			$self->{add_attribute_button}->Enable($is_class);
+			$self->{add_subtype_button}->Enable($is_class);
+
+			$self->{current_element} = $element;
+		}
+	);
+
+	for my $role (@{$program->roles}) {
+		my $node = $tree->AppendItem(
+			$program_node,
+			$role->name,
+			-1, -1,
+			Wx::TreeItemData->new($role)
+			);
+		$tree->Expand($node);
+	}
+
+	for my $class (@{$program->classes}) {
+		my $node = $tree->AppendItem(
+			$program_node,
+			$class->name,
+			-1, -1,
+			Wx::TreeItemData->new($class)
+			);
+			
+		for my $attribute (@{$class->attributes}) {
+			$tree->AppendItem(
+				$node,
+				$attribute->name,
+				-1, -1,
+				Wx::TreeItemData->new($attribute)
+			);
+		}
+
+		for my $subtype (@{$class->subtypes}) {
+			$tree->AppendItem(
+				$node,
+				$subtype->name,
+				-1, -1,
+				Wx::TreeItemData->new($subtype)
+			);
+		}
+
+		$tree->Expand($node);
+	}
+	
+	$tree->ExpandAll;
+}
+
+sub setup_inspector {
+	my $self = shift;
+	my $rows = shift;
+	
+	my $grid = $self->{grid};
+	$grid->DeleteRows(0, $grid->GetNumberRows);
+	$grid->InsertRows(0, scalar @$rows);
+	my $row_index = 0;
+	for my $row (@$rows) {
+		$grid->SetCellValue($row_index,0, $row->{name});
+		if(defined $row->{is_bool}) {
+			$grid->SetCellEditor($row_index, 1, Wx::GridCellBoolEditor->new);
+			$grid->SetCellValue($row_index,1, 1) ;
+		}
+		$row_index++;
+	}
+	$grid->Show(1);
+	$self->Layout;
+	$grid->SetFocus;
+	$grid->SetGridCursor(0, 1);
+}
+
+sub on_add_class_button {
+	my $self = shift;
+
+	my $data = [{name => Wx::gettext('Name:')},
+			{name => Wx::gettext('Superclass:')},
+			{name => Wx::gettext('Roles:')},
+			{name => Wx::gettext('Clean namespace?'), is_bool => 1},
+			{name =>  Wx::gettext('Make Immutable?'), is_bool => 1}];
+	$self->setup_inspector( $data );
+
+	my $class_name = "Class" . $self->{class_count};
+	$self->{grid}->SetCellValue(0,1, $class_name);
+	$self->{class_count}++;
+
+	# Add a new class object to program
+	my $class = Padre::Plugin::Moose::Class->new;
+	$class->name($class_name);
+	$class->immutable(1);
+	$class->namespace_autoclean(1);
+	push @{$self->{program}->classes}, $class;
+
+	$self->show_code_in_preview();
 }
 
 sub on_add_role_button {
 	my $self = shift;
 	
-	my $role = $self->{role_text}->GetValue;
-	my $requires = $self->{requires_text}->GetValue;
+	my $data = [{name => Wx::gettext('Name:')},
+			{name => Wx::gettext('Requires:')}, ];
+	$self->setup_inspector( $data );
 
-	$role =~ s/^\s+|\s+$//g;
-	$requires =~ s/^\s+|\s+$//g;
-	my @requires = split /,/, $requires;
-
-	if($role eq '') {
-		$self->main->error(Wx::gettext('Role name cannot be empty'));
-		$self->{role_text}->SetFocus();
-		return;
-	}
+	my $role_name = "Role" . $self->{role_count};
+	$self->{grid}->SetCellValue(0,1, $role_name);
+	$self->{role_count}++;
 	
-	if(scalar @requires == 0) {
-		$self->main->error(Wx::gettext('Requires list cannot be empty'));
-		$self->{requires_text}->SetFocus();
-		return;
-	}
+	# Add a new role object to program
+	my $role = Padre::Plugin::Moose::Role->new;
+	$role->name($role_name);
+	push @{$self->{program}->roles}, $role;
 
-	my $code = "package $role;\n";
-	$code .= "\nuse Moose::Role;\n";
-
-	$code .= "\n" if scalar @requires;
-	for my $require (@requires) {
-		$code .= "with '$require';\n";
-	}
-	$code .= "\n1;\n";
-
-	my $tree = $self->{tree};
-	$tree->DeleteAllItems;
-	my $root   = $tree->AddRoot(
-		$role,
-		-1,
-		-1,
-		Wx::TreeItemData->new('')
-	);
-
-	my $preview = $self->{preview};
-	$preview->SetReadOnly(0);
-	$preview->SetText($code);
-	$preview->SetReadOnly(1);
+	$self->show_code_in_preview();
 }
 
 sub on_add_attribute_button {
-	$_[0]->main->error(Wx::gettext('Not currently implemented'));
-	$_[0]->{attribute_text}->SetFocus;
+	my $self = shift;
+
+	return unless defined $self->{current_element};
+	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class');
+
+	my $data = [{name => Wx::gettext('Name:')},
+			{name => Wx::gettext('Type:')},
+			{name => Wx::gettext('Access:')},
+			{name => Wx::gettext('Trigger:'), is_bool => 1},
+			{name =>  Wx::gettext('Requires:'), is_bool => 1}];
+	$self->setup_inspector( $data );
+
+	my $attribute_name = 'attribute' . $self->{attribute_count};
+	$self->{grid}->SetCellValue(0,1, $attribute_name);
+	$self->{attribute_count}++;
+	
+	# Add a new attribute object to class
+	my $attribute = Padre::Plugin::Moose::Attribute->new;
+	$attribute->name($attribute_name);
+	push @{$self->{current_element}->attributes}, $attribute;
+
+	$self->show_code_in_preview();
 }
 
 sub on_add_subtype_button {
-	$_[0]->main->error(Wx::gettext('Not currently implemented'));
-	$_[0]->{subtype_text}->SetFocus;
+	my $self = shift;
+
+	return unless defined $self->{current_element};
+	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class');
+
+	my $data = [{name => Wx::gettext('Name:')},
+			{name => Wx::gettext('Type:')},
+			{name => Wx::gettext('Error Message:')}, ];
+	$self->setup_inspector( $data );
+
+	my $subtype_name = 'Subtype' . $self->{subtype_count};
+	$self->{grid}->SetCellValue(0,1, $subtype_name);
+	$self->{subtype_count}++;
+
+	# Add a new subtype object to class
+	my $subtype = Padre::Plugin::Moose::Subtype->new;
+	$subtype->name($subtype_name);
+	push @{$self->{current_element}->subtypes}, $subtype;
+
+	$self->show_code_in_preview();
 }
 
 sub on_insert_button_clicked {

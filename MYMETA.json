@@ -35,10 +35,11 @@
          "requires" : {
             "Moose" : "2.0402",
             "Padre" : "0.94",
+            "namespace::clean" : "0.22",
             "perl" : "5.008"
          }
       }
    },
    "release_status" : "stable",
-   "version" : "0.03"
+   "version" : "0.04"
 }
