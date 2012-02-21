@@ -6,9 +6,9 @@ build_requires:
   ExtUtils::MakeMaker: 6.6302
   Test::More: 0.47
 configure_requires:
-  ExtUtils::MakeMaker: 6.62
+  ExtUtils::MakeMaker: 0
 dynamic_config: 0
-generated_by: 'Module::Install version 1.04, CPAN::Meta::Converter version 2.113640'
+generated_by: 'ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.113640'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -16,16 +16,10 @@ meta-spec:
 name: Padre-Plugin-Moose
 no_index:
   directory:
-    - inc
-    - share
     - t
+    - inc
 requires:
   Moose: 2.0402
   Padre: 0.94
   perl: 5.008
-resources:
-  bugtracker: http://padre.perlide.org/
-  homepage: http://padre.perlide.org/
-  license: http://dev.perl.org/licenses/
-  repository: http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose
-version: 0.01
+version: 0.03
