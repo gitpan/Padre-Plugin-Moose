@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Attribute;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 with 'Padre::Plugin::Moose::CodeGen';
 
@@ -20,10 +20,10 @@ sub to_code {
 	my $code = '';
 
 	$code = "has '" . $self->name . "' => (\n";
-	$code .= ( "    is  => '" . $self->access . "',\n" ) if defined $self->access;
-	$code .= ( "    isa => '" . $self->type . "',\n" )   if defined $self->type;
-	$code .= ( "    trigger => " . $self->trigger . ",\n" )  if $self->trigger;
-	$code .= ( "    required => 1,\n")                        if $self->required;
+	$code .= ( "    is  => '" . $self->access . "',\n" )    if defined $self->access;
+	$code .= ( "    isa => '" . $self->type . "',\n" )      if defined $self->type;
+	$code .= ( "    trigger => " . $self->trigger . ",\n" ) if $self->trigger;
+	$code .= ("    required => 1,\n")                       if $self->required;
 	$code .= ");\n";
 
 	return $code;

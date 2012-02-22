@@ -5,9 +5,9 @@ use strict;
 use warnings;
 use Padre::Plugin::Moose::FBP::Main ();
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
-our @ISA     = qw{
+our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
 };
 
@@ -100,6 +100,60 @@ sub new {
 	return $self;
 }
 
+# Set up the events
+sub on_grid_cell_change {
+	my $self = shift;
+
+	my $element = $self->{current_element} or return;
+	my $grid = $self->{grid};
+	if ( $element->isa('Padre::Plugin::Moose::Class') ) {
+		my $row = 0;
+		for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
+			$element->$field( $grid->GetCellValue( $row++, 1 ) );
+		}
+	} elsif ( $element->isa('Padre::Plugin::Moose::Role') ) {
+		my $row = 0;
+		for my $field (qw(name requires_list)) {
+			$element->$field( $grid->GetCellValue( $row++, 1 ) );
+		}
+	} elsif ( $element->isa('Padre::Plugin::Moose::Attribute') ) {
+		my $row = 0;
+		for my $field (qw(name type access trigger required)) {
+			$element->$field( $grid->GetCellValue( $row++, 1 ) );
+		}
+	} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
+		my $row = 0;
+		for my $field (qw(name constraint error_message)) {
+			$element->$field( $grid->GetCellValue( $row++, 1 ) );
+		}
+	} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
+		$element->name( $grid->GetCellValue( 0, 1 ) );
+	}
+
+	$self->show_code_in_preview(0);
+
+}
+
+sub on_tree_selection_change {
+	my $self  = shift;
+	my $event = shift;
+
+	my $item = $event->GetItem or return;
+	my $element = $self->{tree}->GetPlData($item) or return;
+
+	my $is_class = $element->isa('Padre::Plugin::Moose::Class');
+	$self->{add_attribute_button}->Enable($is_class);
+	$self->{add_subtype_button}->Enable($is_class);
+	$self->{add_method_button}->Enable($is_class);
+	if ( $element->isa('Padre::Plugin::Moose::Program') ) {
+		$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
+		$self->Layout;
+	} else {
+		$self->show_inspector($element);
+	}
+	$self->{current_element} = $element;
+}
+
 sub on_about_button_clicked {
 	require Moose;
 	require Padre::Unload;
@@ -119,7 +173,8 @@ sub on_about_button_clicked {
 }
 
 sub show_code_in_preview {
-	my $self = shift;
+	my $self               = shift;
+	my $should_select_item = shift;
 
 	eval {
 
@@ -136,7 +191,7 @@ sub show_code_in_preview {
 		$preview->SetReadOnly(1);
 
 		# Update tree
-		$self->update_tree;
+		$self->update_tree($should_select_item);
 	};
 	if ($@) {
 		$self->main->error( Wx::gettext( "Error: " . $@ ) );
@@ -144,10 +199,13 @@ sub show_code_in_preview {
 }
 
 sub update_tree {
-	my $self = shift;
+	my $self               = shift;
+	my $should_select_item = shift;
 
 	my $tree = $self->{tree};
 	$tree->DeleteAllItems;
+
+	my $selected_item;
 
 	my $program      = $self->{program};
 	my $program_node = $tree->AddRoot(
@@ -157,75 +215,20 @@ sub update_tree {
 		Wx::TreeItemData->new($program)
 	);
 
-	if($program eq $self->{current_element}) {
-		$tree->SelectItem($program_node);
+	if ( $program eq $self->{current_element} ) {
+		$selected_item = $program_node;
 	}
 
-	# Set up the events
-	Wx::Event::EVT_TREE_SEL_CHANGED(
-		$tree, $tree,
-
-		sub {
-			my $item    = $_[1]->GetItem          or return;
-			my $element = $tree->GetPlData($item) or return;
-
-			my $is_class = $element->isa('Padre::Plugin::Moose::Class');
-			$self->{add_attribute_button}->Enable($is_class);
-			$self->{add_subtype_button}->Enable($is_class);
-			$self->{add_method_button}->Enable($is_class);
-			if ( $element->isa('Padre::Plugin::Moose::Program') ) {
-				$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
-				$self->Layout;
-			} else {
-				$self->show_inspector($element);
-			}
-			$self->{current_element} = $element;
-		}
-	);
-	Wx::Event::EVT_GRID_CMD_CELL_CHANGE(
-		$self->{grid}, $self->{grid},
-
-		sub {
-			my $element = $self->{current_element} or return;
-			my $grid = $self->{grid};
-			if ( $element->isa('Padre::Plugin::Moose::Class') ) {
-				my $row = 0;
-				for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
-					$element->$field( $grid->GetCellValue( $row++, 1 ) );
-				}
-			} elsif ( $element->isa('Padre::Plugin::Moose::Role') ) {
-				my $row = 0;
-				for my $field (qw(name requires_list)) {
-					$element->$field( $grid->GetCellValue( $row++, 1 ) );
-				}
-			} elsif ( $element->isa('Padre::Plugin::Moose::Attribute') ) {
-				my $row = 0;
-				for my $field (qw(name type access trigger required)) {
-					$element->$field( $grid->GetCellValue( $row++, 1 ) );
-				}
-			} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
-				my $row = 0;
-				for my $field (qw(name constraint error_message)) {
-					$element->$field( $grid->GetCellValue( $row++, 1 ) );
-				}
-			} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
-				$element->name( $grid->GetCellValue( 0, 1 ) );
-			}
-
-			$self->show_code_in_preview();
-		}
-	);
-
 	for my $role ( @{ $program->roles } ) {
-		my $node = $tree->AppendItem(
+		my $role_node = $tree->AppendItem(
 			$program_node,
 			$role->name,
 			-1, -1,
 			Wx::TreeItemData->new($role)
 		);
-		$tree->Expand($node);
-		if($role == $self->{current_element}) {
-			$tree->SelectItem($node);
+		$tree->Expand($role_node);
+		if ( $role == $self->{current_element} ) {
+			$selected_item = $role_node;
 		}
 	}
 
@@ -243,19 +246,31 @@ sub update_tree {
 				-1, -1,
 				Wx::TreeItemData->new($class_item)
 			);
-			if($class_item == $self->{current_element}) {
-				$tree->SelectItem($class_item_node);
+			if ( $class_item == $self->{current_element} ) {
+				$selected_item = $class_item_node;
 			}
 		}
-		
-		if($class == $self->{current_element}) {
-			$tree->SelectItem($class_node);
+
+		if ( $class == $self->{current_element} ) {
+			$selected_item = $class_node;
 		}
-		
+
 		$tree->Expand($class_node);
 	}
 
 	$tree->ExpandAll;
+
+	# Select the tree node outside this event to
+	# prevent deep recurision
+	Wx::Event::EVT_IDLE(
+		$self,
+		sub {
+			$tree->SelectItem($selected_item);
+			Wx::Event::EVT_IDLE( $self, undef );
+		}
+		)
+		if $should_select_item
+			&& defined $selected_item;
 }
 
 sub show_inspector {
@@ -327,7 +342,7 @@ sub on_add_class_button {
 
 	$self->{current_element} = $class;
 	$self->show_inspector($class);
-	$self->show_code_in_preview();
+	$self->show_code_in_preview(1);
 }
 
 sub on_add_role_button {
@@ -341,7 +356,7 @@ sub on_add_role_button {
 
 	$self->{current_element} = $role;
 	$self->show_inspector($role);
-	$self->show_code_in_preview();
+	$self->show_code_in_preview(1);
 }
 
 sub on_add_attribute_button {
@@ -359,7 +374,7 @@ sub on_add_attribute_button {
 
 	$self->{current_element} = $attribute;
 	$self->show_inspector($attribute);
-	$self->show_code_in_preview();
+	$self->show_code_in_preview(1);
 }
 
 sub on_add_subtype_button {
@@ -377,7 +392,7 @@ sub on_add_subtype_button {
 
 	$self->{current_element} = $subtype;
 	$self->show_inspector($subtype);
-	$self->show_code_in_preview();
+	$self->show_code_in_preview(1);
 }
 
 sub on_add_method_button {
@@ -390,20 +405,20 @@ sub on_add_method_button {
 	# Add a new method object to class
 	require Padre::Plugin::Moose::Method;
 	my $method = Padre::Plugin::Moose::Method->new;
-	$method->name('method_' . $self->{method_count}++);
+	$method->name( 'method_' . $self->{method_count}++ );
 	push @{ $self->{current_element}->methods }, $method;
 
 	$self->{current_element} = $method;
 	$self->show_inspector($method);
-	$self->show_code_in_preview();
+	$self->show_code_in_preview(1);
 }
 
 sub on_sample_code_checkbox {
-	$_[0]->show_code_in_preview();
+	$_[0]->show_code_in_preview(1);
 }
 
 sub on_comments_checkbox {
-	$_[0]->show_code_in_preview();
+	$_[0]->show_code_in_preview(1);
 }
 
 sub on_insert_button_clicked {
