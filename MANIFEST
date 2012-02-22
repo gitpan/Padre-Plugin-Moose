@@ -5,13 +5,17 @@ inc/Module/Install/Can.pm
 inc/Module/Install/Fetch.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
+inc/Module/Install/Msgfmt.pm
+inc/Module/Install/Share.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Padre/Plugin/Moose.pm
 lib/Padre/Plugin/Moose/Attribute.pm
 lib/Padre/Plugin/Moose/Class.pm
+lib/Padre/Plugin/Moose/CodeGen.pm
 lib/Padre/Plugin/Moose/FBP/Main.pm
 lib/Padre/Plugin/Moose/Main.pm
+lib/Padre/Plugin/Moose/Method.pm
 lib/Padre/Plugin/Moose/Program.pm
 lib/Padre/Plugin/Moose/Role.pm
 lib/Padre/Plugin/Moose/Subtype.pm
@@ -22,6 +26,5 @@ MYMETA.json
 MYMETA.yml
 Padre-Plugin-Moose.fbp
 padre.yml
-share/icons/16x16/logo.png
 share/locale/Padre__Plugin__Moose-ar.po
 t/00-compile.t

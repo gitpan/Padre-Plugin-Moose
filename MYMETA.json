@@ -23,6 +23,7 @@
       "build" : {
          "requires" : {
             "ExtUtils::MakeMaker" : "6.6302",
+            "Locale::Msgfmt" : "0.15",
             "Test::More" : "0.47"
          }
       },
@@ -41,5 +42,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.04"
+   "version" : "0.05"
 }

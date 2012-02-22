@@ -4,6 +4,7 @@ author:
   - 'Ahmad M. Zawawi <ahmad.zawawi@gmail.com>'
 build_requires:
   ExtUtils::MakeMaker: 6.6302
+  Locale::Msgfmt: 0.15
   Test::More: 0.47
 configure_requires:
   ExtUtils::MakeMaker: 6.6302
@@ -30,4 +31,4 @@ resources:
   homepage: http://padre.perlide.org/
   license: http://dev.perl.org/licenses/
   repository: http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose
-version: 0.04
+version: 0.05
