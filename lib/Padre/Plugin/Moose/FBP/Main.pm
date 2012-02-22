@@ -14,7 +14,7 @@ use Padre::Wx 'Grid';
 use Padre::Wx::Role::Main ();
 use Padre::Wx::Editor ();
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 our @ISA     = qw{
 	Padre::Wx::Role::Main
 	Wx::Dialog
@@ -58,7 +58,7 @@ sub new {
 	$self->{add_class_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Class"),
+		Wx::gettext("&Class"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -74,7 +74,7 @@ sub new {
 	$self->{add_role_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Role"),
+		Wx::gettext("&Role"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -90,7 +90,7 @@ sub new {
 	$self->{add_attribute_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Attribute"),
+		Wx::gettext("&Attribute"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -106,7 +106,7 @@ sub new {
 	$self->{add_subtype_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Subtype"),
+		Wx::gettext("&Subtype"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -122,7 +122,7 @@ sub new {
 	$self->{add_method_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Method"),
+		Wx::gettext("&Method"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -201,6 +201,15 @@ sub new {
 		},
 	);
 
+	$self->{help_text} = Wx::TextCtrl->new(
+		$self,
+		-1,
+		"",
+		Wx::DefaultPosition,
+		Wx::DefaultSize,
+		Wx::TE_MULTILINE | Wx::TE_READONLY,
+	);
+
 	$self->{preview} = Padre::Wx::Editor->new(
 		$self,
 		-1,
@@ -236,19 +245,19 @@ sub new {
 		Wx::HL_DEFAULT_STYLE,
 	);
 
-	$self->{insert_code_button} = Wx::Button->new(
+	$self->{generate_code_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Insert code"),
+		Wx::gettext("&Generate"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
 
 	Wx::Event::EVT_BUTTON(
 		$self,
-		$self->{insert_code_button},
+		$self->{generate_code_button},
 		sub {
-			shift->on_insert_button_clicked(@_);
+			shift->on_generate_code_button_clicked(@_);
 		},
 	);
 
@@ -299,6 +308,7 @@ sub new {
 	$right_sizer->Add( $self->{grid_label}, 0, Wx::ALL, 5 );
 	$right_sizer->Add( $self->{grid}, 0, Wx::ALL, 5 );
 	$right_sizer->Add( $bottom_sizer, 0, Wx::EXPAND, 5 );
+	$right_sizer->Add( $self->{help_text}, 1, Wx::ALL | Wx::EXPAND, 5 );
 
 	my $top_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
 	$top_sizer->Add( $left_sizer, 2, Wx::EXPAND, 5 );
@@ -312,7 +322,7 @@ sub new {
 	my $buttons_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
 	$buttons_sizer->Add( $hyperlink_sizer, 0, Wx::EXPAND, 5 );
 	$buttons_sizer->Add( 10, 0, 1, Wx::EXPAND, 5 );
-	$buttons_sizer->Add( $self->{insert_code_button}, 0, Wx::ALL, 2 );
+	$buttons_sizer->Add( $self->{generate_code_button}, 0, Wx::ALL, 2 );
 	$buttons_sizer->Add( 30, 0, 0, Wx::EXPAND, 5 );
 	$buttons_sizer->Add( $self->{about_button}, 0, Wx::ALL, 2 );
 	$buttons_sizer->Add( $self->{close_button}, 0, Wx::ALL, 2 );
@@ -364,8 +374,8 @@ sub on_sample_code_checkbox {
 	$_[0]->main->error('Handler method on_sample_code_checkbox for event sample_code_checkbox.OnCheckBox not implemented');
 }
 
-sub on_insert_button_clicked {
-	$_[0]->main->error('Handler method on_insert_button_clicked for event insert_code_button.OnButtonClick not implemented');
+sub on_generate_code_button_clicked {
+	$_[0]->main->error('Handler method on_generate_code_button_clicked for event generate_code_button.OnButtonClick not implemented');
 }
 
 sub on_about_button_clicked {

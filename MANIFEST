@@ -11,9 +11,11 @@ inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Padre/Plugin/Moose.pm
 lib/Padre/Plugin/Moose/Attribute.pm
+lib/Padre/Plugin/Moose/CanGenerateCode.pm
+lib/Padre/Plugin/Moose/CanProvideHelp.pm
 lib/Padre/Plugin/Moose/Class.pm
-lib/Padre/Plugin/Moose/CodeGen.pm
 lib/Padre/Plugin/Moose/FBP/Main.pm
+lib/Padre/Plugin/Moose/HasClassMembers.pm
 lib/Padre/Plugin/Moose/Main.pm
 lib/Padre/Plugin/Moose/Method.pm
 lib/Padre/Plugin/Moose/Program.pm

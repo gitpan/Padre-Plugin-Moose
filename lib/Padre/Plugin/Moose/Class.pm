@@ -3,20 +3,19 @@ package Padre::Plugin::Moose::Class;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
-with 'Padre::Plugin::Moose::CodeGen';
+with 'Padre::Plugin::Moose::CanGenerateCode';
+with 'Padre::Plugin::Moose::HasClassMembers';
+with 'Padre::Plugin::Moose::CanProvideHelp';
 
 has 'name'         => ( is => 'rw', isa => 'Str',      default => '' );
 has 'superclasses' => ( is => 'rw', isa => 'Str',      default => '' );
 has 'roles'        => ( is => 'rw', isa => 'Str',      default => '' );
-has 'attributes'   => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
-has 'subtypes'     => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
-has 'methods'      => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 has 'immutable'           => ( is => 'rw', isa => 'Bool' );
 has 'namespace_autoclean' => ( is => 'rw', isa => 'Bool' );
 
-sub to_code {
+sub generate_code {
 	my $self     = shift;
 	my $comments = shift;
 
@@ -47,11 +46,9 @@ sub to_code {
 			: "\n";
 	}
 
-	if ( scalar @{ $self->subtypes } ) {
-
-		# If there is at least one subtype, we need to add this import
-		$code .= "use Moose::Util::TypeConstraints;\n";
-	}
+	# If there is at least one subtype, we need to add this import
+	$code .= "use Moose::Util::TypeConstraints;\n"
+		if scalar @{ $self->subtypes };
 
 	$code .= "\nextends '$superclasses';\n" if $superclasses ne '';
 
@@ -60,24 +57,8 @@ sub to_code {
 		$code .= "with '$role';\n";
 	}
 
-	$code .= "\n" if scalar @{ $self->attributes };
-
-	# Generate attributes
-	for my $attribute ( @{ $self->attributes } ) {
-		$code .= $attribute->to_code($comments);
-	}
-
-	# Generate subtypes
-	$code .= "\n" if scalar @{ $self->subtypes };
-	for my $subtype ( @{ $self->subtypes } ) {
-		$code .= $subtype->to_code($comments);
-	}
-
-	# Generate methods
-	$code .= "\n" if scalar @{ $self->methods };
-	for my $method ( @{ $self->methods } ) {
-		$code .= $method->to_code($comments);
-	}
+	# Generate class members
+	$code .= $self->to_class_members_code($comments);
 
 	if ($make_immutable) {
 		$code .= "\n__PACKAGE__->meta->make_immutable;";
@@ -89,6 +70,11 @@ sub to_code {
 	$code .= "\n1;\n\n";
 
 	return $code;
+}
+
+sub provide_help {
+	require Wx;
+	return Wx::gettext(' A class is a blueprint of how to create objects of itself. A class can contain attributes, subtypes and methods which enable objects to have state and behavior.');
 }
 
 __PACKAGE__->meta->make_immutable;

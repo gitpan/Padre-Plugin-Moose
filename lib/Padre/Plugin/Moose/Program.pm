@@ -3,14 +3,15 @@ package Padre::Plugin::Moose::Program;
 use namespace::clean;
 use Moose;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
-with 'Padre::Plugin::Moose::CodeGen';
+with 'Padre::Plugin::Moose::CanGenerateCode';
+with 'Padre::Plugin::Moose::CanProvideHelp';
 
 has 'roles'   => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 has 'classes' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 
-sub to_code {
+sub generate_code {
 	my $self        = shift;
 	my $comments    = shift;
 	my $sample_code = shift;
@@ -19,12 +20,12 @@ sub to_code {
 
 	# Generate roles
 	for my $role ( @{ $self->roles } ) {
-		$code .= $role->to_code($comments);
+		$code .= $role->generate_code($comments);
 	}
 
 	# Generate classes
 	for my $class ( @{ $self->classes } ) {
-		$code .= $class->to_code($comments);
+		$code .= $class->generate_code($comments);
 	}
 
 	# Generate sample usage code
@@ -38,6 +39,11 @@ sub to_code {
 	}
 
 	return $code;
+}
+
+sub provide_help {
+	require Wx;
+	return Wx::gettext('A program can contain multiple class, role definitions');
 }
 
 __PACKAGE__->meta->make_immutable;

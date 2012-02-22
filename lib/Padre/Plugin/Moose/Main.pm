@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Padre::Plugin::Moose::FBP::Main ();
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
@@ -61,14 +61,11 @@ sub new {
 
 	require Padre::Plugin::Moose::Program;
 	$self->{program}         = Padre::Plugin::Moose::Program->new;
-	$self->{current_element} = undef;
+	$self->{current_element} = $self->{program};
 
 	# Defaults
 	$self->{comments_checkbox}->SetValue(1);
 	$self->{sample_code_checkbox}->SetValue(1);
-	$self->{add_attribute_button}->Enable(0);
-	$self->{add_subtype_button}->Enable(0);
-	$self->{add_method_button}->Enable(0);
 
 	# TODO Bug Alias to fix the wxFormBuilder bug regarding this one
 	my $grid = $self->{grid};
@@ -85,17 +82,15 @@ sub new {
 	my $preview = $self->{preview};
 	$preview->{Document} = Padre::Document->new( mimetype => 'application/x-perl', );
 	$preview->{Document}->set_editor($preview);
-	$preview->Show(1);
-
 	$preview->SetLexer('application/x-perl');
-	$preview->SetText("\n# Generated Perl code is shown here");
+	$preview->Show(1);
 
 	# Apply the current theme
 	my $style = $main->config->editor_style;
 	my $theme = Padre::Wx::Theme->find($style)->clone;
 	$theme->apply($preview);
-
-	$preview->SetReadOnly(1);
+	
+	$self->show_code_in_preview(1);
 
 	return $self;
 }
@@ -141,17 +136,41 @@ sub on_tree_selection_change {
 	my $item = $event->GetItem or return;
 	my $element = $self->{tree}->GetPlData($item) or return;
 
-	my $is_class = $element->isa('Padre::Plugin::Moose::Class');
-	$self->{add_attribute_button}->Enable($is_class);
-	$self->{add_subtype_button}->Enable($is_class);
-	$self->{add_method_button}->Enable($is_class);
+	my $is_parent = $element->isa('Padre::Plugin::Moose::Class') ||
+		$element->isa('Padre::Plugin::Moose::Role');
+	my $is_program = $element->isa('Padre::Plugin::Moose::Program');
+	$self->{add_class_button}->Show($is_program);
+	$self->{add_role_button}->Show($is_program);
+	$self->{add_attribute_button}->Show($is_parent);
+	$self->{add_subtype_button}->Show($is_parent);
+	$self->{add_method_button}->Show($is_parent);
 	if ( $element->isa('Padre::Plugin::Moose::Program') ) {
 		$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
-		$self->Layout;
 	} else {
 		$self->show_inspector($element);
 	}
+	
+	# Display help about the current element
+	$self->{help_text}->SetValue($element->provide_help);
+
 	$self->{current_element} = $element;
+	$self->Layout;
+
+	# TODO improve the crude workaround to positioning
+	unless($is_program) {
+		my $preview = $self->{preview};
+		my $code = $preview->GetText;
+		my @lines = split /\n/, $code;
+		my $line_num = 0;
+		for my $line (@lines) {
+			my $name = $element->name;
+			if($line =~ /.+?$name.+?/) {
+				$preview->goto_line_centerize($line_num);
+				last;
+			}
+			$line_num++;
+		}
+	}
 }
 
 sub on_about_button_clicked {
@@ -179,7 +198,7 @@ sub show_code_in_preview {
 	eval {
 
 		# Generate code
-		my $code = $self->{program}->to_code(
+		my $code = $self->{program}->generate_code(
 			$self->{comments_checkbox}->IsChecked,
 			$self->{sample_code_checkbox}->IsChecked
 		);
@@ -219,20 +238,7 @@ sub update_tree {
 		$selected_item = $program_node;
 	}
 
-	for my $role ( @{ $program->roles } ) {
-		my $role_node = $tree->AppendItem(
-			$program_node,
-			$role->name,
-			-1, -1,
-			Wx::TreeItemData->new($role)
-		);
-		$tree->Expand($role_node);
-		if ( $role == $self->{current_element} ) {
-			$selected_item = $role_node;
-		}
-	}
-
-	for my $class ( @{ $program->classes } ) {
+	for my $class ( @{ $program->roles }, @{ $program->classes } ) {
 		my $class_node = $tree->AppendItem(
 			$program_node,
 			$class->name,
@@ -362,9 +368,10 @@ sub on_add_role_button {
 sub on_add_attribute_button {
 	my $self = shift;
 
-	# Only allowed within a class element
+	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class');
+	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
+		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
 
 	# Add a new attribute object to class
 	require Padre::Plugin::Moose::Attribute;
@@ -380,9 +387,10 @@ sub on_add_attribute_button {
 sub on_add_subtype_button {
 	my $self = shift;
 
-	# Only allowed within a class element
+	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class');
+	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
+		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
 
 	# Add a new subtype object to class
 	require Padre::Plugin::Moose::Subtype;
@@ -398,9 +406,10 @@ sub on_add_subtype_button {
 sub on_add_method_button {
 	my $self = shift;
 
-	# Only allowed within a class element
+	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class');
+	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
+		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
 
 	# Add a new method object to class
 	require Padre::Plugin::Moose::Method;
@@ -421,7 +430,7 @@ sub on_comments_checkbox {
 	$_[0]->show_code_in_preview(1);
 }
 
-sub on_insert_button_clicked {
+sub on_generate_code_button_clicked {
 	my $self = shift;
 
 	$self->main->on_new;
