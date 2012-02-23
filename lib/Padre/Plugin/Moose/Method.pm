@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Method;
 use namespace::clean;
 use Moose;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 with 'Padre::Plugin::Moose::CanGenerateCode';
 with 'Padre::Plugin::Moose::CanProvideHelp';
@@ -11,7 +11,7 @@ with 'Padre::Plugin::Moose::CanProvideHelp';
 has 'name' => ( is => 'rw', isa => 'Str' );
 
 sub generate_code {
-	return "sub " . $_[0]->name . " { }\n";
+	return "sub " . $_[0]->name . " {\n\tmy \$self = shift;\n}\n";
 }
 
 sub provide_help {

@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Padre::Plugin::Moose::FBP::Main ();
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
@@ -37,7 +37,8 @@ my %INSPECTOR = (
 
 	'Subtype' => [
 		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Type:') },
+		{ name => Wx::gettext('Base Type:') },
+		{ name => Wx::gettext('Constraint:') },
 		{ name => Wx::gettext('Error Message:') },
 	],
 
@@ -53,19 +54,7 @@ sub new {
 	my $self = $class->SUPER::new($main);
 	$self->CenterOnParent;
 
-	$self->{class_count}     = 1;
-	$self->{role_count}      = 1;
-	$self->{attribute_count} = 1;
-	$self->{subtype_count}   = 1;
-	$self->{method_count}    = 1;
-
-	require Padre::Plugin::Moose::Program;
-	$self->{program}         = Padre::Plugin::Moose::Program->new;
-	$self->{current_element} = $self->{program};
-
-	# Defaults
-	$self->{comments_checkbox}->SetValue(1);
-	$self->{sample_code_checkbox}->SetValue(1);
+	$self->restore_defaults;
 
 	# TODO Bug Alias to fix the wxFormBuilder bug regarding this one
 	my $grid = $self->{grid};
@@ -118,7 +107,7 @@ sub on_grid_cell_change {
 		}
 	} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
 		my $row = 0;
-		for my $field (qw(name constraint error_message)) {
+		for my $field (qw(name base_type constraint error_message)) {
 			$element->$field( $grid->GetCellValue( $row++, 1 ) );
 		}
 	} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
@@ -133,18 +122,15 @@ sub on_tree_selection_change {
 	my $self  = shift;
 	my $event = shift;
 
+	my $tree = $self->{tree};
 	my $item = $event->GetItem or return;
-	my $element = $self->{tree}->GetPlData($item) or return;
+	my $element = $tree->GetPlData($item) or return;
 
 	my $is_parent = $element->isa('Padre::Plugin::Moose::Class') ||
 		$element->isa('Padre::Plugin::Moose::Role');
 	my $is_program = $element->isa('Padre::Plugin::Moose::Program');
-	$self->{add_class_button}->Show($is_program);
-	$self->{add_role_button}->Show($is_program);
-	$self->{add_attribute_button}->Show($is_parent);
-	$self->{add_subtype_button}->Show($is_parent);
-	$self->{add_method_button}->Show($is_parent);
-	if ( $element->isa('Padre::Plugin::Moose::Program') ) {
+
+	if ( $is_program ) {
 		$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
 	} else {
 		$self->show_inspector($element);
@@ -154,6 +140,20 @@ sub on_tree_selection_change {
 	$self->{help_text}->SetValue($element->provide_help);
 
 	$self->{current_element} = $element;
+
+	# Find parent element
+	if ( Scalar::Util::blessed($element) =~ /(Attribute|Subtype|Method)$/ ) {
+		$self->{current_parent} = $tree->GetPlData($tree->GetItemParent($item));
+	} else {
+		$self->{current_parent} = $element if $is_parent;
+	}
+
+	my $can_add_class_member = (not $is_program) && 
+		$self->{current_parent} != $self->{program};
+	$self->{add_attribute_button}->Show($can_add_class_member);
+	$self->{add_subtype_button}->Show($can_add_class_member);
+	$self->{add_method_button}->Show($can_add_class_member);
+
 	$self->Layout;
 
 	# TODO improve the crude workaround to positioning
@@ -327,7 +327,7 @@ sub show_inspector {
 		}
 	} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
 		my $row = 0;
-		for my $field (qw(name constraint error_message)) {
+		for my $field (qw(name base_type constraint error_message)) {
 			$grid->SetCellValue( $row++, 1, $element->$field );
 		}
 	} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
@@ -370,14 +370,13 @@ sub on_add_attribute_button {
 
 	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
-		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
+	return unless defined $self->{current_parent};
 
 	# Add a new attribute object to class
 	require Padre::Plugin::Moose::Attribute;
 	my $attribute = Padre::Plugin::Moose::Attribute->new;
 	$attribute->name( 'attribute' . $self->{attribute_count}++ );
-	push @{ $self->{current_element}->attributes }, $attribute;
+	push @{ $self->{current_parent}->attributes }, $attribute;
 
 	$self->{current_element} = $attribute;
 	$self->show_inspector($attribute);
@@ -389,14 +388,13 @@ sub on_add_subtype_button {
 
 	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
-		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
+	return unless defined $self->{current_parent};
 
 	# Add a new subtype object to class
 	require Padre::Plugin::Moose::Subtype;
 	my $subtype = Padre::Plugin::Moose::Subtype->new;
 	$subtype->name( 'Subtype' . $self->{subtype_count}++ );
-	push @{ $self->{current_element}->subtypes }, $subtype;
+	push @{ $self->{current_parent}->subtypes }, $subtype;
 
 	$self->{current_element} = $subtype;
 	$self->show_inspector($subtype);
@@ -408,14 +406,13 @@ sub on_add_method_button {
 
 	# Only allowed within a class/role element
 	return unless defined $self->{current_element};
-	return unless $self->{current_element}->isa('Padre::Plugin::Moose::Class') ||
-		$self->{current_element}->isa('Padre::Plugin::Moose::Role');
+	return unless defined $self->{current_parent};
 
 	# Add a new method object to class
 	require Padre::Plugin::Moose::Method;
 	my $method = Padre::Plugin::Moose::Method->new;
 	$method->name( 'method_' . $self->{method_count}++ );
-	push @{ $self->{current_element}->methods }, $method;
+	push @{ $self->{current_parent}->methods }, $method;
 
 	$self->{current_element} = $method;
 	$self->show_inspector($method);
@@ -430,12 +427,48 @@ sub on_comments_checkbox {
 	$_[0]->show_code_in_preview(1);
 }
 
+sub on_reset_button_clicked {
+	my $self = shift;
+
+	if($self->main->yes_no(Wx::gettext('Do you really want to reset?'))) {
+		$self->restore_defaults;
+		$self->show_code_in_preview(1);
+	}
+}
+
 sub on_generate_code_button_clicked {
 	my $self = shift;
 
-	$self->main->on_new;
-	my $editor = $self->current->editor or return;
-	$editor->insert_text( $self->{preview}->GetText );
+	Wx::Event::EVT_IDLE(
+		$self,
+		sub {
+			$self->main->new_document_from_string(
+				$self->{preview}->GetText => 'application/x-perl',
+			);
+			Wx::Event::EVT_IDLE( $self, undef );
+		}
+		);
+
+	$self->EndModal(Wx::ID_OK);
+}
+
+sub restore_defaults {
+	my $self = shift;
+	
+	$self->{class_count}     = 1;
+	$self->{role_count}      = 1;
+	$self->{attribute_count} = 1;
+	$self->{subtype_count}   = 1;
+	$self->{method_count}    = 1;
+
+	require Padre::Plugin::Moose::Program;
+	$self->{program}         = Padre::Plugin::Moose::Program->new;
+	$self->{current_element} = $self->{program};
+	$self->{current_parent}  = $self->{program};
+
+	# Defaults
+	$self->{comments_checkbox}->SetValue(1);
+	$self->{sample_code_checkbox}->SetValue(1);
 }
 
 1;
