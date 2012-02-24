@@ -24,4 +24,4 @@ requires:
   Padre: 0.94
   namespace::clean: 0.22
   perl: 5.008
-version: 0.09
+version: 0.10
