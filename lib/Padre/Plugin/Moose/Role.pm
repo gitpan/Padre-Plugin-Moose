@@ -3,11 +3,12 @@ package Padre::Plugin::Moose::Role;
 use namespace::clean;
 use Moose;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
-with 'Padre::Plugin::Moose::CanGenerateCode';
-with 'Padre::Plugin::Moose::HasClassMembers';
-with 'Padre::Plugin::Moose::CanProvideHelp';
+with 'Padre::Plugin::Moose::Role::CanGenerateCode';
+with 'Padre::Plugin::Moose::Role::HasClassMembers';
+with 'Padre::Plugin::Moose::Role::CanProvideHelp';
+with 'Padre::Plugin::Moose::Role::CanHandleInspector';
 
 has 'name' => ( is => 'rw', isa => 'Str' );
 has 'requires_list' => ( is => 'rw', isa => 'Str', default => '' );
@@ -46,6 +47,34 @@ sub generate_code {
 sub provide_help {
 	require Wx;
 	return Wx::gettext('A role provides some piece of behavior or state that can be shared between classes.');
+}
+
+sub read_from_inspector {
+	my $self = shift;
+	my $grid = shift;
+
+	my $row = 0;
+	for my $field (qw(name requires_list)) {
+		$self->$field( $grid->GetCellValue( $row++, 1 ) );
+	}
+}
+
+sub write_to_inspector {
+	my $self = shift;
+	my $grid = shift;
+
+	my $row = 0;
+	for my $field (qw(name requires_list)) {
+		$grid->SetCellValue( $row++, 1, $self->$field );
+	}
+}
+
+sub get_grid_data {
+	require Wx;
+	return [
+		{ name => Wx::gettext('Name:') },
+		{ name => Wx::gettext('Requires:') },
+	];
 }
 
 __PACKAGE__->meta->make_immutable;

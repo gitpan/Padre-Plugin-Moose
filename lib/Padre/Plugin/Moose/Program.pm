@@ -3,10 +3,10 @@ package Padre::Plugin::Moose::Program;
 use namespace::clean;
 use Moose;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
-with 'Padre::Plugin::Moose::CanGenerateCode';
-with 'Padre::Plugin::Moose::CanProvideHelp';
+with 'Padre::Plugin::Moose::Role::CanGenerateCode';
+with 'Padre::Plugin::Moose::Role::CanProvideHelp';
 
 has 'roles'   => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 has 'classes' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );

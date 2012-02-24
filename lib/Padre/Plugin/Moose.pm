@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use Padre::Plugin ();
 
@@ -21,16 +21,14 @@ sub padre_interfaces {
 # Padre::Plugin Methods
 
 sub plugin_name {
-	Wx::gettext('Moose...');
+	Wx::gettext('Moose');
 }
 
 sub plugin_disable {
 	my $self = shift;
 
 	# Destroy resident dialog
-	if(defined $self->{dialog}) {
-		$self->{dialog}->Destroy;
-	}
+	$self->{dialog}->Destroy if defined $self->{dialog};
 
 	# TODO uncomment once Padre 0.96 is released
 	#$_[0]->unload(
@@ -45,15 +43,16 @@ sub plugin_disable {
 sub menu_plugins {
 	my $self      = shift;
 	my $main      = $self->main;
-	my $menu_item = Wx::MenuItem->new( undef, -1, $self->plugin_name . "\tF8", );
+	my $menu_item = Wx::MenuItem->new( undef, -1, $self->plugin_name . "...\tF8", );
 	Wx::Event::EVT_MENU(
 		$main,
 		$menu_item,
 		sub {
 			eval {
 				require Padre::Plugin::Moose::Main;
-				$self->{dialog} = Padre::Plugin::Moose::Main->new($main) 
+				$self->{dialog} = Padre::Plugin::Moose::Main->new($main)
 					unless defined $self->{dialog};
+				$self->{dialog}->run;
 				$self->{dialog}->ShowModal;
 			};
 			print "Error: $@" if $@;
@@ -85,8 +84,8 @@ Once you enable this Plugin under Padre, you'll get a brand new menu with the fo
 
 =head2 Moose...
 
-Opens up a user-friendly dialog where you can add classes, roles, attributes and subtypes. 
-The dialog contains a tree of stuff that are created while it is open and a preview of
+Opens up a user-friendly dialog where you can add classes, roles, attributes, subtypes and methods.
+The dialog contains a tree of class/role elements that are created while it is open and a preview of
 generated Perl code. It also contains links to Moose manual, cookbook and website.
 
 =head1 BUGS

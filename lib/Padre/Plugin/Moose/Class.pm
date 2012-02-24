@@ -3,16 +3,17 @@ package Padre::Plugin::Moose::Class;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
-with 'Padre::Plugin::Moose::CanGenerateCode';
-with 'Padre::Plugin::Moose::HasClassMembers';
-with 'Padre::Plugin::Moose::CanProvideHelp';
+with 'Padre::Plugin::Moose::Role::CanGenerateCode';
+with 'Padre::Plugin::Moose::Role::HasClassMembers';
+with 'Padre::Plugin::Moose::Role::CanProvideHelp';
+with 'Padre::Plugin::Moose::Role::CanHandleInspector';
 
-has 'name'         => ( is => 'rw', isa => 'Str',      default => '' );
-has 'superclasses' => ( is => 'rw', isa => 'Str',      default => '' );
-has 'roles'        => ( is => 'rw', isa => 'Str',      default => '' );
-has 'immutable'           => ( is => 'rw', isa => 'Bool' );
+has 'name'         => ( is => 'rw', isa => 'Str', default => '' );
+has 'superclasses' => ( is => 'rw', isa => 'Str', default => '' );
+has 'roles'        => ( is => 'rw', isa => 'Str', default => '' );
+has 'immutable'    => ( is => 'rw', isa => 'Bool' );
 has 'namespace_autoclean' => ( is => 'rw', isa => 'Bool' );
 
 sub generate_code {
@@ -74,7 +75,40 @@ sub generate_code {
 
 sub provide_help {
 	require Wx;
-	return Wx::gettext(' A class is a blueprint of how to create objects of itself. A class can contain attributes, subtypes and methods which enable objects to have state and behavior.');
+	return Wx::gettext(
+		' A class is a blueprint of how to create objects of itself. A class can contain attributes, subtypes and methods which enable objects to have state and behavior.'
+	);
+}
+
+sub read_from_inspector {
+	my $self = shift;
+	my $grid = shift;
+
+	my $row = 0;
+	for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
+		$self->$field( $grid->GetCellValue( $row++, 1 ) );
+	}
+}
+
+sub write_to_inspector {
+	my $self = shift;
+	my $grid = shift;
+
+	my $row = 0;
+	for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
+		$grid->SetCellValue( $row++, 1, $self->$field );
+	}
+}
+
+sub get_grid_data {
+	require Wx;
+	return [
+		{ name => Wx::gettext('Name:') },
+		{ name => Wx::gettext('Superclasses:') },
+		{ name => Wx::gettext('Roles:') },
+		{ name => Wx::gettext('Clean namespace?'), is_bool => 1 },
+		{ name => Wx::gettext('Make immutable?'), is_bool => 1 }
+	];
 }
 
 __PACKAGE__->meta->make_immutable;

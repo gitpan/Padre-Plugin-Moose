@@ -1,51 +1,17 @@
 package Padre::Plugin::Moose::Main;
 
 use 5.008;
-use strict;
-use warnings;
-use Padre::Plugin::Moose::FBP::Main ();
+use Moose;
 
-our $VERSION = '0.08';
+use Padre::Plugin::Moose::FBP::Main ();
+use Padre::Wx::Role::Dialog         ();
+
+our $VERSION = '0.09';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
+	Padre::Wx::Role::Dialog
 };
-
-
-my %INSPECTOR = (
-
-	'Class' => [
-		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Superclass:') },
-		{ name => Wx::gettext('Roles:') },
-		{ name => Wx::gettext('Clean namespace?'), is_bool => 1 },
-		{ name => Wx::gettext('Make Immutable?'), is_bool => 1 }
-	],
-
-	'Role' => [
-		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Requires:') },
-	],
-
-	'Attribute' => [
-		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Type:') },
-		{ name => Wx::gettext('Access:') },
-		{ name => Wx::gettext('Trigger:'), is_bool => 1 },
-		{ name => Wx::gettext('Requires:'), is_bool => 1 }
-	],
-
-	'Subtype' => [
-		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Base Type:') },
-		{ name => Wx::gettext('Constraint:') },
-		{ name => Wx::gettext('Error Message:') },
-	],
-
-	'Method' => [
-		{ name => Wx::gettext('Name:') },
-	],
-);
 
 sub new {
 	my $class = shift;
@@ -64,24 +30,30 @@ sub new {
 		$grid->SetReadOnly( $row, 0 );
 	}
 
-	# Hide them!
-	$_->Show(0) for ( $self->{grid_label}, $grid );
+	# Hide the inspector as needed
+	$self->show_inspector(undef);
 
 	# Setup preview editor
 	my $preview = $self->{preview};
+	require Padre::Document;
 	$preview->{Document} = Padre::Document->new( mimetype => 'application/x-perl', );
 	$preview->{Document}->set_editor($preview);
 	$preview->SetLexer('application/x-perl');
 	$preview->Show(1);
 
-	# Apply the current theme
-	my $style = $main->config->editor_style;
-	my $theme = Padre::Wx::Theme->find($style)->clone;
-	$theme->apply($preview);
-	
 	$self->show_code_in_preview(1);
 
 	return $self;
+}
+
+# This is called before the dialog is shown
+sub run {
+	my $self = shift;
+
+	# Apply the current theme to the preview editor
+	my $style = $self->main->config->editor_style;
+	my $theme = Padre::Wx::Theme->find($style)->clone;
+	$theme->apply( $self->{preview} );
 }
 
 # Set up the events
@@ -89,83 +61,52 @@ sub on_grid_cell_change {
 	my $self = shift;
 
 	my $element = $self->{current_element} or return;
-	my $grid = $self->{grid};
-	if ( $element->isa('Padre::Plugin::Moose::Class') ) {
-		my $row = 0;
-		for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
-			$element->$field( $grid->GetCellValue( $row++, 1 ) );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Role') ) {
-		my $row = 0;
-		for my $field (qw(name requires_list)) {
-			$element->$field( $grid->GetCellValue( $row++, 1 ) );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Attribute') ) {
-		my $row = 0;
-		for my $field (qw(name type access trigger required)) {
-			$element->$field( $grid->GetCellValue( $row++, 1 ) );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
-		my $row = 0;
-		for my $field (qw(name base_type constraint error_message)) {
-			$element->$field( $grid->GetCellValue( $row++, 1 ) );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
-		$element->name( $grid->GetCellValue( 0, 1 ) );
-	}
+
+	$element->read_from_inspector( $self->{grid} )
+		if $element->does('Padre::Plugin::Moose::Role::CanHandleInspector');
 
 	$self->show_code_in_preview(0);
-
 }
 
 sub on_tree_selection_change {
 	my $self  = shift;
 	my $event = shift;
 
-	my $tree = $self->{tree};
-	my $item = $event->GetItem or return;
+	my $tree    = $self->{tree};
+	my $item    = $event->GetItem or return;
 	my $element = $tree->GetPlData($item) or return;
 
-	my $is_parent = $element->isa('Padre::Plugin::Moose::Class') ||
-		$element->isa('Padre::Plugin::Moose::Role');
+	my $is_parent  = $element->does('Padre::Plugin::Moose::Role::HasClassMembers');
 	my $is_program = $element->isa('Padre::Plugin::Moose::Program');
 
-	if ( $is_program ) {
-		$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
-	} else {
-		$self->show_inspector($element);
-	}
-	
+	# Show/Hide the inspector as needed
+	$self->show_inspector( $is_program ? undef : $element );
+
 	# Display help about the current element
-	$self->{help_text}->SetValue($element->provide_help);
+	$self->{help_text}->SetValue( $element->provide_help );
 
 	$self->{current_element} = $element;
 
 	# Find parent element
-	if ( Scalar::Util::blessed($element) =~ /(Attribute|Subtype|Method)$/ ) {
-		$self->{current_parent} = $tree->GetPlData($tree->GetItemParent($item));
+	if ( $element->does('Padre::Plugin::Moose::Role::ClassMember') ) {
+		$self->{current_parent} = $tree->GetPlData( $tree->GetItemParent($item) );
 	} else {
 		$self->{current_parent} = $element if $is_parent;
 	}
 
-	my $can_add_class_member = (not $is_program) && 
-		$self->{current_parent} != $self->{program};
-	$self->{add_attribute_button}->Show($can_add_class_member);
-	$self->{add_subtype_button}->Show($can_add_class_member);
-	$self->{add_method_button}->Show($can_add_class_member);
-
 	$self->Layout;
 
 	# TODO improve the crude workaround to positioning
-	unless($is_program) {
-		my $preview = $self->{preview};
-		my $code = $preview->GetText;
-		my @lines = split /\n/, $code;
+	unless ($is_program) {
+		my $preview  = $self->{preview};
 		my $line_num = 0;
-		for my $line (@lines) {
-			my $name = $element->name;
-			if($line =~ /.+?$name.+?/) {
-				$preview->goto_line_centerize($line_num);
+		for my $line ( split /\n/, $preview->GetText ) {
+			my $name = quotemeta $element->name;
+			if ( $line =~ /$name/ ) {
+				my $position = $preview->PositionFromLine($line_num);
+				$preview->SetCurrentPos($position);
+				$preview->SetAnchor($position);
+				$preview->ScrollToLine($line_num);
 				last;
 			}
 			$line_num++;
@@ -175,20 +116,16 @@ sub on_tree_selection_change {
 
 sub on_about_button_clicked {
 	require Moose;
-	require Padre::Unload;
-	my $about = Wx::AboutDialogInfo->new;
-	$about->SetName('Padre::Plugin::Moose');
-	$about->SetDescription(
+	$_[0]->message(
 		Wx::gettext('Moose support for Padre') . "\n\n"
 			. sprintf(
 			Wx::gettext('This system is running Moose version %s'),
-			$Moose::VERSION
+			$Moose::VERSION,
 			)
+			. "\n\n"
+			. Wx::gettext('Written with passion in 2012 by Ahmad M. Zawawi (c)'),
+		"Padre::Plugin::Moose $VERSION"
 	);
-	$about->SetVersion($Padre::Plugin::Moose::VERSION);
-	Wx::AboutBox($about);
-
-	return;
 }
 
 sub show_code_in_preview {
@@ -213,7 +150,7 @@ sub show_code_in_preview {
 		$self->update_tree($should_select_item);
 	};
 	if ($@) {
-		$self->main->error( Wx::gettext( "Error: " . $@ ) );
+		$self->error( Wx::gettext( "Error: " . $@ ) );
 	}
 }
 
@@ -283,56 +220,39 @@ sub show_inspector {
 	my $self    = shift;
 	my $element = shift;
 
-	require Scalar::Util;
-	my $type = Scalar::Util::blessed($element);
-	if ( ( not defined $type ) or ( $type !~ /(Class|Role|Attribute|Subtype|Method)$/ ) ) {
-		die "type: $element is not Class, Role, Attribute, Subtype or Method\n";
+	unless ( defined $element ) {
+		$_->Show(0) for ( $self->{grid_label}, $self->{grid} );
+		return;
 	}
-	$type =~ s/.+?(Class|Role|Attribute|Subtype|Method)$/$1/g;
 
-	my $rows = $INSPECTOR{$type};
-	my $grid = $self->{grid};
+	my $type = blessed($element);
+	if ( ( not defined $type ) or ( $type !~ /(Class|Role|Attribute|Subtype|Method)$/ ) ) {
+		$self->error("type: $element is not Class, Role, Attribute, Subtype or Method\n");
+		return;
+	}
+
+	my $grid_data = $element->get_grid_data;
+	my $grid      = $self->{grid};
 	$grid->DeleteRows( 0, $grid->GetNumberRows );
-	$grid->InsertRows( 0, scalar @$rows );
+	$grid->InsertRows( 0, scalar @$grid_data );
 	my $row_index = 0;
-	for my $row (@$rows) {
+	for my $row (@$grid_data) {
 		$grid->SetCellValue( $row_index, 0, $row->{name} );
 		if ( defined $row->{is_bool} ) {
 			$grid->SetCellEditor( $row_index, 1, Wx::GridCellBoolEditor->new );
 			$grid->SetCellValue( $row_index, 1, 1 );
+		} elsif ( defined $row->{choices} ) {
+			$grid->SetCellEditor( $row_index, 1, Wx::GridCellBoolEditor->new( $row->{choices} ) );
 		}
 		$row_index++;
 	}
 
 	$_->Show(1) for ( $self->{grid_label}, $grid );
 	$self->Layout;
-	$grid->SetFocus;
 	$grid->SetGridCursor( 0, 1 );
 
-
-	if ( $element->isa('Padre::Plugin::Moose::Class') ) {
-		my $row = 0;
-		for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
-			$grid->SetCellValue( $row++, 1, $element->$field );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Role') ) {
-		my $row = 0;
-		for my $field (qw(name requires_list)) {
-			$grid->SetCellValue( $row++, 1, $element->$field );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Attribute') ) {
-		my $row = 0;
-		for my $field (qw(name type access trigger required)) {
-			$grid->SetCellValue( $row++, 1, $element->$field );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Subtype') ) {
-		my $row = 0;
-		for my $field (qw(name base_type constraint error_message)) {
-			$grid->SetCellValue( $row++, 1, $element->$field );
-		}
-	} elsif ( $element->isa('Padre::Plugin::Moose::Method') ) {
-		$grid->SetCellValue( 0, 1, $element->name );
-	}
+	$element->write_to_inspector($grid)
+		if $element->does('Padre::Plugin::Moose::Role::CanHandleInspector');
 }
 
 sub on_add_class_button {
@@ -369,8 +289,13 @@ sub on_add_attribute_button {
 	my $self = shift;
 
 	# Only allowed within a class/role element
-	return unless defined $self->{current_element};
-	return unless defined $self->{current_parent};
+	unless ( defined $self->{current_element}
+		&& defined $self->{current_parent}
+		&& $self->{current_parent}->does('Padre::Plugin::Moose::Role::HasClassMembers') )
+	{
+		$self->error( Wx::gettext('You can only add an attribute to a class or role') );
+		return;
+	}
 
 	# Add a new attribute object to class
 	require Padre::Plugin::Moose::Attribute;
@@ -387,8 +312,13 @@ sub on_add_subtype_button {
 	my $self = shift;
 
 	# Only allowed within a class/role element
-	return unless defined $self->{current_element};
-	return unless defined $self->{current_parent};
+	unless ( defined $self->{current_element}
+		&& defined $self->{current_parent}
+		&& $self->{current_parent}->does('Padre::Plugin::Moose::Role::HasClassMembers') )
+	{
+		$self->error( Wx::gettext('You can only add a subtype to a class or role') );
+		return;
+	}
 
 	# Add a new subtype object to class
 	require Padre::Plugin::Moose::Subtype;
@@ -405,8 +335,13 @@ sub on_add_method_button {
 	my $self = shift;
 
 	# Only allowed within a class/role element
-	return unless defined $self->{current_element};
-	return unless defined $self->{current_parent};
+	unless ( defined $self->{current_element}
+		&& defined $self->{current_parent}
+		&& $self->{current_parent}->does('Padre::Plugin::Moose::Role::HasClassMembers') )
+	{
+		$self->error( Wx::gettext('You can only add a method to a class or role') );
+		return;
+	}
 
 	# Add a new method object to class
 	require Padre::Plugin::Moose::Method;
@@ -430,7 +365,7 @@ sub on_comments_checkbox {
 sub on_reset_button_clicked {
 	my $self = shift;
 
-	if($self->main->yes_no(Wx::gettext('Do you really want to reset?'))) {
+	if ( $self->yes_no( Wx::gettext('Do you really want to reset?') ) ) {
 		$self->restore_defaults;
 		$self->show_code_in_preview(1);
 	}
@@ -447,14 +382,14 @@ sub on_generate_code_button_clicked {
 			);
 			Wx::Event::EVT_IDLE( $self, undef );
 		}
-		);
+	);
 
 	$self->EndModal(Wx::ID_OK);
 }
 
 sub restore_defaults {
 	my $self = shift;
-	
+
 	$self->{class_count}     = 1;
 	$self->{role_count}      = 1;
 	$self->{attribute_count} = 1;
