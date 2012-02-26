@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Attribute;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -59,8 +59,12 @@ sub get_grid_data {
 	require Wx;
 	return [
 		{ name => Wx::gettext('Name:') },
-		{ name => Wx::gettext('Access type:') },
-		{ name => Wx::gettext('Type:') },
+		{ name => Wx::gettext('Access type:'), choices => [qw(rw ro bare)] },
+		{   name    => Wx::gettext('Type:'),
+			choices => [
+				qw(Any Item Bool Maybe[] Undef Defined Value Str Num Int ClassName RoleName Ref ScalarRef[] ArrayRef[] HashRef[] CodeRef RegexpRef GlobRef FileHandle Object)
+			]
+		},
 		{ name => Wx::gettext('Required:'), is_bool => 1 },
 		{ name => Wx::gettext('Trigger:') },
 	];

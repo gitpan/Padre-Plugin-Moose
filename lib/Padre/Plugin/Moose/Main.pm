@@ -6,7 +6,7 @@ use Moose;
 use Padre::Plugin::Moose::FBP::Main ();
 use Padre::Wx::Role::Dialog         ();
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
@@ -19,9 +19,8 @@ sub new {
 
 	my $self = $class->SUPER::new($main);
 	$self->CenterOnParent;
-	$self->SetTitle(sprintf(
-		Wx::gettext('Padre::Plugin::Moose %s - Written for fun by Ahmad M. Zawawi (azawawi)'), $VERSION)
-	);
+	$self->SetTitle(
+		sprintf( Wx::gettext('Padre::Plugin::Moose %s - Written for fun by Ahmad M. Zawawi (azawawi)'), $VERSION ) );
 
 	$self->restore_defaults;
 
@@ -138,9 +137,8 @@ sub show_code_in_preview {
 		# Update tree
 		$self->update_tree($should_select_item);
 	};
-	if ($@) {
-		$self->error( Wx::gettext( "Error: " . $@ ) );
-	}
+	$self->error( sprintf(Wx::gettext('Error:%s'), $@) )
+		if $@;
 }
 
 sub update_tree {
@@ -231,7 +229,7 @@ sub show_inspector {
 			$inspector->SetCellEditor( $row_index, 1, Wx::GridCellBoolEditor->new );
 			$inspector->SetCellValue( $row_index, 1, 1 );
 		} elsif ( defined $row->{choices} ) {
-			$inspector->SetCellEditor( $row_index, 1, Wx::GridCellBoolEditor->new( $row->{choices} ) );
+			$inspector->SetCellEditor( $row_index, 1, Wx::GridCellChoiceEditor->new( $row->{choices}, 1 ) );
 		}
 		$row_index++;
 	}
@@ -343,6 +341,52 @@ sub on_add_method_button {
 	$self->show_code_in_preview(1);
 }
 
+sub on_add_constructor_button {
+	my $self = shift;
+
+	# Only allowed within a class/role element
+	unless ( defined $self->{current_element}
+		&& defined $self->{current_parent}
+		&& $self->{current_parent}->does('Padre::Plugin::Moose::Role::HasClassMembers') )
+	{
+		$self->error( Wx::gettext('You can only add a constructor to a class or role') );
+		return;
+	}
+
+	# # Add a new constructor object to class
+	# require Padre::Plugin::Moose::Constructor;
+	# my $method = Padre::Plugin::Moose::Constructor->new;
+	# $method->name( 'method_' . $self->{method_count}++ );
+	# push @{ $self->{current_parent}->constructor }, $method;
+
+	# $self->{current_element} = $method;
+	# $self->show_inspector($method);
+	# $self->show_code_in_preview(1);
+}
+
+sub on_add_destructor_button {
+	my $self = shift;
+
+	# Only allowed within a class/role element
+	unless ( defined $self->{current_element}
+		&& defined $self->{current_parent}
+		&& $self->{current_parent}->does('Padre::Plugin::Moose::Role::HasClassMembers') )
+	{
+		$self->error( Wx::gettext('You can only add a destructor to a class or role') );
+		return;
+	}
+
+	# # Add a new destructor object to class
+	# require Padre::Plugin::Moose::Destructor;
+	# my $method = Padre::Plugin::Moose::Destructor->new;
+	# $method->name( 'method_' . $self->{method_count}++ );
+	# push @{ $self->{current_parent}->methods }, $method;
+
+	# $self->{current_element} = $method;
+	# $self->show_inspector($method);
+	# $self->show_code_in_preview(1);
+}
+
 sub on_sample_code_checkbox {
 	$_[0]->show_code_in_preview(1);
 }
@@ -393,6 +437,68 @@ sub restore_defaults {
 	# Defaults
 	$self->{comments_checkbox}->SetValue(1);
 	$self->{sample_code_checkbox}->SetValue(1);
+}
+
+# Called when a item context menu is requested.
+sub on_tree_item_menu {
+	my $self    = shift;
+	my $event   = shift;
+	my $item    = $event->GetItem;
+	my $tree    = $self->{tree};
+	my $element = $tree->GetPlData($item) or return;
+	return if $element->isa('Padre::Plugin::Moose::Program');
+
+	# Generate the context menu for this element
+	my $menu = Wx::Menu->new;
+
+	Wx::Event::EVT_MENU(
+		$self,
+		$menu->Append( -1, Wx::gettext('Delete') ),
+		sub {
+			$self->delete_element($element);
+		}
+	);
+
+	# Pops up the context menu
+	$tree->PopupMenu(
+		$menu,
+		$event->GetPoint->x,
+		$event->GetPoint->y,
+	);
+
+	return;
+}
+
+sub on_tree_key_up {
+	my $self  = shift;
+	my $event = shift;
+	my $mod   = $event->GetModifiers || 0;
+
+	# see Padre::Wx::Main::key_up
+	$mod = $mod & ( Wx::MOD_ALT + Wx::MOD_CMD + Wx::MOD_SHIFT );
+
+	my $tree = $self->{tree};
+	my $item_id = $tree->GetSelection;
+	my $element    = $tree->GetPlData($item_id) or return;
+
+	if ( $event->GetKeyCode == Wx::K_DELETE ) {
+		$self->delete_element($element);
+	}
+
+	$event->Skip;
+
+	return;
+}
+
+sub delete_element {
+	my $self = shift;
+	my $element = shift or return;
+
+	if ( $self->yes_no( sprintf(Wx::gettext('Do you want to delete %s?'), $element->name ) )) {
+		#TODO do the actual item deletion
+	}
+
+	return;
 }
 
 1;

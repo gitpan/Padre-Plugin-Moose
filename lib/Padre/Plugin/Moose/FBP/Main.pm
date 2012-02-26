@@ -14,7 +14,7 @@ use Padre::Wx 'Grid';
 use Padre::Wx::Role::Main ();
 use Padre::Wx::Editor ();
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 our @ISA     = qw{
 	Padre::Wx::Role::Main
 	Wx::Dialog
@@ -39,6 +39,21 @@ sub new {
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 		Wx::TR_DEFAULT_STYLE,
+	);
+
+	Wx::Event::EVT_KEY_UP(
+		$self->{tree},
+		sub {
+			$self->on_tree_key_up($_[1]);
+		},
+	);
+
+	Wx::Event::EVT_TREE_ITEM_MENU(
+		$self,
+		$self->{tree},
+		sub {
+			shift->on_tree_item_menu(@_);
+		},
 	);
 
 	Wx::Event::EVT_TREE_SEL_CHANGED(
@@ -173,6 +188,22 @@ sub new {
 		},
 	);
 
+	$self->{add_constructor_button} = Wx::Button->new(
+		$self->{members},
+		-1,
+		Wx::gettext("&Constructor"),
+		Wx::DefaultPosition,
+		Wx::DefaultSize,
+	);
+
+	Wx::Event::EVT_BUTTON(
+		$self,
+		$self->{add_constructor_button},
+		sub {
+			shift->on_add_constructor_button(@_);
+		},
+	);
+
 	$self->{add_method_button} = Wx::Button->new(
 		$self->{members},
 		-1,
@@ -186,6 +217,22 @@ sub new {
 		$self->{add_method_button},
 		sub {
 			shift->on_add_method_button(@_);
+		},
+	);
+
+	$self->{add_destructor_button} = Wx::Button->new(
+		$self->{members},
+		-1,
+		Wx::gettext("&Destructor"),
+		Wx::DefaultPosition,
+		Wx::DefaultSize,
+	);
+
+	Wx::Event::EVT_BUTTON(
+		$self,
+		$self->{add_destructor_button},
+		sub {
+			shift->on_add_destructor_button(@_);
 		},
 	);
 
@@ -339,7 +386,9 @@ sub new {
 	my $members_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
 	$members_sizer->Add( $self->{add_attribute_button}, 0, Wx::ALL, 2 );
 	$members_sizer->Add( $self->{add_subtype_button}, 0, Wx::ALL, 2 );
+	$members_sizer->Add( $self->{add_constructor_button}, 0, Wx::ALL, 2 );
 	$members_sizer->Add( $self->{add_method_button}, 0, Wx::ALL, 2 );
+	$members_sizer->Add( $self->{add_destructor_button}, 0, Wx::ALL, 2 );
 
 	$self->{members}->SetSizerAndFit($members_sizer);
 	$self->{members}->Layout;
@@ -403,6 +452,14 @@ sub new {
 	return $self;
 }
 
+sub on_tree_key_up {
+	$_[0]->main->error('Handler method on_tree_key_up for event tree.OnKeyUp not implemented');
+}
+
+sub on_tree_item_menu {
+	$_[0]->main->error('Handler method on_tree_item_menu for event tree.OnTreeItemMenu not implemented');
+}
+
 sub on_tree_selection_change {
 	$_[0]->main->error('Handler method on_tree_selection_change for event tree.OnTreeSelChanged not implemented');
 }
@@ -427,8 +484,16 @@ sub on_add_subtype_button {
 	$_[0]->main->error('Handler method on_add_subtype_button for event add_subtype_button.OnButtonClick not implemented');
 }
 
+sub on_add_constructor_button {
+	$_[0]->main->error('Handler method on_add_constructor_button for event add_constructor_button.OnButtonClick not implemented');
+}
+
 sub on_add_method_button {
 	$_[0]->main->error('Handler method on_add_method_button for event add_method_button.OnButtonClick not implemented');
+}
+
+sub on_add_destructor_button {
+	$_[0]->main->error('Handler method on_add_destructor_button for event add_destructor_button.OnButtonClick not implemented');
 }
 
 sub on_comments_checkbox {
