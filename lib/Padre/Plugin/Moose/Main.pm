@@ -6,7 +6,7 @@ use Moose;
 use Padre::Plugin::Moose::FBP::Main ();
 use Padre::Wx::Role::Dialog         ();
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
@@ -120,9 +120,10 @@ sub show_code_in_preview {
 
 		# Generate code
 		my $code = $self->{program}->generate_code(
-			$self->{use_mouse_checkbox}->IsChecked,
-			$self->{comments_checkbox}->IsChecked,
-			$self->{sample_code_checkbox}->IsChecked,
+			{   code_type   => $self->{generated_code_combo}->GetValue,
+				comments    => $self->{comments_checkbox}->IsChecked,
+				sample_code => $self->{sample_code_checkbox}->IsChecked,
+			}
 		);
 
 		# And show it in preview editor
@@ -389,7 +390,7 @@ sub on_add_destructor_button {
 }
 
 sub on_use_mouse_checkbox {
-	$_[0]->show_code_in_preview(1);	
+	$_[0]->show_code_in_preview(1);
 }
 
 sub on_sample_code_checkbox {
@@ -505,6 +506,12 @@ sub delete_element {
 	}
 
 	return;
+}
+
+sub on_generated_code_combo {
+	my $self = shift;
+
+	$self->show_code_in_preview(1);
 }
 
 1;

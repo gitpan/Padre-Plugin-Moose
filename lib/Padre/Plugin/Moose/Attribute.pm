@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Attribute;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -30,10 +30,10 @@ my @FIELDS = qw(
 	name access_type type class_has required trigger coerce does weak_ref
 	lazy builder default clearer predicate documentation);
 
-sub generate_code {
-	my $self    = shift;
-	my $use_mouse = shift;
-	my $comment = shift;
+sub generate_moose_code {
+	my $self             = shift;
+	my $code_gen_options = shift;
+	my $comment          = $code_gen_options->{comments};
 
 	my $has_code = '';
 	$has_code .= ( "\tis  => '" . $self->access_type . "',\n" )
@@ -42,8 +42,28 @@ sub generate_code {
 	$has_code .= ("\trequired => 1,\n")                       if $self->required;
 	$has_code .= ( "\ttrigger => " . $self->trigger . ",\n" ) if defined $self->trigger && $self->trigger ne '';
 
-	my $has = ($self->class_has && not $use_mouse) ? 'class_has' : 'has';
+	my $has = ( $self->class_has ) ? 'class_has' : 'has';
 	return "$has '" . $self->name . "'" . ( $has_code ne '' ? qq{ => (\n$has_code)} : q{} ) . ";\n";
+}
+
+# Generate Mouse code!
+sub generate_mouse_code {
+	my $self             = shift;
+	my $code_gen_options = shift;
+	my $comment          = $code_gen_options->{comments};
+
+	my $has_code = '';
+	$has_code .= ( "\tis  => '" . $self->access_type . "',\n" )
+		if defined $self->access_type && $self->access_type ne '';
+	$has_code .= ( "\tisa => '" . $self->type . "',\n" )      if defined $self->type    && $self->type    ne '';
+	$has_code .= ("\trequired => 1,\n")                       if $self->required;
+	$has_code .= ( "\ttrigger => " . $self->trigger . ",\n" ) if defined $self->trigger && $self->trigger ne '';
+
+	return "has '" . $self->name . "'" . ( $has_code ne '' ? qq{ => (\n$has_code)} : q{} ) . ";\n";
+}
+
+sub generate_moosex_declare_code {
+	return $_[0]->generate_moose_code(@_);
 }
 
 sub provide_help {
@@ -81,13 +101,13 @@ sub get_grid_data {
 				qw(Any Item Bool Maybe[] Undef Defined Value Str Num Int ClassName RoleName Ref ScalarRef[] ArrayRef[] HashRef[] CodeRef RegexpRef GlobRef FileHandle Object)
 			]
 		},
-		{ name => Wx::gettext('Class Attribute?'), is_bool => 1},
-		{ name => Wx::gettext('Required?'), is_bool => 1 },
+		{ name => Wx::gettext('Class Attribute?'), is_bool => 1 },
+		{ name => Wx::gettext('Required?'),        is_bool => 1 },
 		{ name => Wx::gettext('Trigger:') },
-		{ name => Wx::gettext('Coerce?'), is_bool => 1 },
+		{ name => Wx::gettext('Coerce?'),          is_bool => 1 },
 		{ name => Wx::gettext('Does role:') },
-		{ name => Wx::gettext('Weak Ref?'), is_bool => 1 },
-		{ name => Wx::gettext('lazy?'), is_bool => 1 },
+		{ name => Wx::gettext('Weak Ref?'),        is_bool => 1 },
+		{ name => Wx::gettext('lazy?'),            is_bool => 1 },
 		{ name => Wx::gettext('Builder:') },
 		{ name => Wx::gettext('Default:') },
 		{ name => Wx::gettext('Clearer:') },

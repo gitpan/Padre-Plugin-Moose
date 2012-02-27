@@ -1,9 +1,9 @@
 package Padre::Plugin::Moose::Subtype;
 
-use namespace::clean;
 use Moose;
+use namespace::clean;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -15,7 +15,7 @@ has 'base_type'     => ( is => 'rw', isa => 'Str', default => '' );
 has 'constraint'    => ( is => 'rw', isa => 'Str', default => '' );
 has 'error_message' => ( is => 'rw', isa => 'Str', default => '' );
 
-sub generate_code {
+sub generate_moose_code {
 	my $self = shift;
 
 	my $code = "subtype '" . $self->name . "'";
@@ -29,6 +29,15 @@ sub generate_code {
 	$code .= ";\n";
 
 	return $code;
+}
+
+# Generate Mouse code!
+sub generate_mouse_code {
+	return $_[0]->generate_moose_code(@_);
+}
+
+sub generate_moosex_declare_code {
+	return $_[0]->generate_moose_code(@_);
 }
 
 sub provide_help {

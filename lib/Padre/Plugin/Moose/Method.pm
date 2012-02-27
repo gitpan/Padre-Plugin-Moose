@@ -1,9 +1,9 @@
 package Padre::Plugin::Moose::Method;
 
-use namespace::clean;
 use Moose;
+use namespace::clean;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -13,9 +13,10 @@ with 'Padre::Plugin::Moose::Role::CanHandleInspector';
 
 has 'modifier' => ( is => 'rw', isa => 'Str' );
 
-sub generate_code {
-	my $self     = shift;
-	my $comments = shift;
+sub generate_moose_code {
+	my $self             = shift;
+	my $code_gen_options = shift;
+	my $comments         = $code_gen_options->{comments};
 
 	my $code;
 	my $name     = $self->name;
@@ -33,6 +34,37 @@ sub generate_code {
 		$code = $self->modifier . " '$name' => sub {\n\tmy \$self = shift;\n};\n";
 	} else {
 		$code = "sub $name {\n\tmy \$self = shift;\n}\n";
+	}
+
+	return $code;
+}
+
+# Generate Mouse code!
+sub generate_mouse_code {
+	return $_[0]->generate_moose_code(@_);
+}
+
+sub generate_moosex_declare_code {
+	my $self             = shift;
+	my $code_gen_options = shift;
+	my $comments         = $code_gen_options->{comments};
+
+	my $code;
+	my $name     = $self->name;
+	my $modifier = $self->modifier;
+	if ( defined $modifier && $modifier eq 'around' ) {
+		$code = "around '$name' => sub {\n";
+		$code .= "\tmy \$orig = shift;\n";
+		$code .= "\tmy \$self = shift;\n";
+		$code .= "\n";
+		$code .= "\t# before calling $name\n" if $comments;
+		$code .= "\t\$self->\$orig(\@_)\n";
+		$code .= "\t# after calling $name\n" if $comments;
+		$code .= "};\n";
+	} elsif ( defined $modifier && $modifier =~ /^(before|after)$/ ) {
+		$code = $self->modifier . " '$name' => sub {\n\tmy \$self = shift;\n};\n";
+	} else {
+		$code = "method $name {\n" . ( $comments ? "\t# \$self is predeclared by MooseX::Declare" : q{} ) . "\n}\n";
 	}
 
 	return $code;
