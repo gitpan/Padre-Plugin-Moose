@@ -6,7 +6,7 @@ use Moose;
 use Padre::Plugin::Moose::FBP::Main ();
 use Padre::Wx::Role::Dialog         ();
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 our @ISA = qw{
 	Padre::Plugin::Moose::FBP::Main
@@ -27,10 +27,6 @@ sub new {
 	# TODO Bug Alias to fix the wxFormBuilder bug regarding this one
 	my $inspector = $self->{inspector};
 	$inspector->SetRowLabelSize(0);
-
-	for my $row ( 0 .. $inspector->GetNumberRows - 1 ) {
-		$inspector->SetReadOnly( $row, 0 );
-	}
 
 	# Hide the inspector as needed
 	$self->show_inspector(undef);
@@ -124,8 +120,9 @@ sub show_code_in_preview {
 
 		# Generate code
 		my $code = $self->{program}->generate_code(
+			$self->{use_mouse_checkbox}->IsChecked,
 			$self->{comments_checkbox}->IsChecked,
-			$self->{sample_code_checkbox}->IsChecked
+			$self->{sample_code_checkbox}->IsChecked,
 		);
 
 		# And show it in preview editor
@@ -137,7 +134,7 @@ sub show_code_in_preview {
 		# Update tree
 		$self->update_tree($should_select_item);
 	};
-	$self->error( sprintf(Wx::gettext('Error:%s'), $@) )
+	$self->error( sprintf( Wx::gettext('Error:%s'), $@ ) )
 		if $@;
 }
 
@@ -208,7 +205,7 @@ sub show_inspector {
 	my $element = shift;
 
 	unless ( defined $element ) {
-		$self->{inspector}->Show(0);
+		$self->{inspector}->GetContainingSizer->Show(0);
 		return;
 	}
 
@@ -234,7 +231,11 @@ sub show_inspector {
 		$row_index++;
 	}
 
-	$inspector->Show(1);
+	for my $row ( 0 .. $row_index - 1 ) {
+		$inspector->SetReadOnly( $row, 0 );
+	}
+
+	$self->{inspector}->GetContainingSizer->Show(1);
 	$self->Layout;
 	$inspector->SetGridCursor( 0, 1 );
 
@@ -387,6 +388,10 @@ sub on_add_destructor_button {
 	# $self->show_code_in_preview(1);
 }
 
+sub on_use_mouse_checkbox {
+	$_[0]->show_code_in_preview(1);	
+}
+
 sub on_sample_code_checkbox {
 	$_[0]->show_code_in_preview(1);
 }
@@ -477,9 +482,9 @@ sub on_tree_key_up {
 	# see Padre::Wx::Main::key_up
 	$mod = $mod & ( Wx::MOD_ALT + Wx::MOD_CMD + Wx::MOD_SHIFT );
 
-	my $tree = $self->{tree};
+	my $tree    = $self->{tree};
 	my $item_id = $tree->GetSelection;
-	my $element    = $tree->GetPlData($item_id) or return;
+	my $element = $tree->GetPlData($item_id) or return;
 
 	if ( $event->GetKeyCode == Wx::K_DELETE ) {
 		$self->delete_element($element);
@@ -494,7 +499,8 @@ sub delete_element {
 	my $self = shift;
 	my $element = shift or return;
 
-	if ( $self->yes_no( sprintf(Wx::gettext('Do you want to delete %s?'), $element->name ) )) {
+	if ( $self->yes_no( sprintf( Wx::gettext('Do you want to delete %s?'), $element->name ) ) ) {
+
 		#TODO do the actual item deletion
 	}
 

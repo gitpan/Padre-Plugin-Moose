@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Class;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::HasClassMembers';
@@ -15,9 +15,11 @@ has 'superclasses' => ( is => 'rw', isa => 'Str', default => '' );
 has 'roles'        => ( is => 'rw', isa => 'Str', default => '' );
 has 'immutable'    => ( is => 'rw', isa => 'Bool' );
 has 'namespace_autoclean' => ( is => 'rw', isa => 'Bool' );
+has 'singleton'    => ( is => 'rw', isa => 'Bool' );
 
 sub generate_code {
 	my $self     = shift;
+	my $use_mouse = shift;
 	my $comments = shift;
 
 	my $class               = $self->name;
@@ -33,7 +35,11 @@ sub generate_code {
 
 	my $code = "package $class;\n";
 
-	$code .= "\nuse Moose;";
+	if($use_mouse) {
+		$code .= "\nuse Mouse;";
+	} else {
+		$code .= "\nuse Moose;";
+	}
 	$code .=
 		$comments
 		? " # automatically turns on strict and warnings\n"
@@ -48,8 +54,24 @@ sub generate_code {
 	}
 
 	# If there is at least one subtype, we need to add this import
-	$code .= "use Moose::Util::TypeConstraints;\n"
-		if scalar @{ $self->subtypes };
+	if(scalar @{ $self->subtypes }) {
+		if($use_mouse) {
+			$code .= "use Mouse::Util::TypeConstraints;\n"
+		} else {
+			$code .= "use Moose::Util::TypeConstraints;\n"
+		}
+	}
+
+	# Singleton via MooseX::Singleton
+	$code .= "use MooseX::Singleton;\n" if $self->singleton && not $use_mouse;
+
+	# Class attributes via MooseX::ClassAttribute
+	for my $attribute ( @{ $self->attributes } ) {
+		if($attribute->class_has) {
+			$code .= "use MooseX::ClassAttribute;\n" if $attribute->class_has && not $use_mouse;		
+			last;
+		}
+	}
 
 	$code .= "\nextends '$superclasses';\n" if $superclasses ne '';
 
@@ -59,7 +81,7 @@ sub generate_code {
 	}
 
 	# Generate class members
-	$code .= $self->to_class_members_code($comments);
+	$code .= $self->to_class_members_code($use_mouse, $comments);
 
 	if ($make_immutable) {
 		$code .= "\n__PACKAGE__->meta->make_immutable;";
@@ -85,7 +107,7 @@ sub read_from_inspector {
 	my $grid = shift;
 
 	my $row = 0;
-	for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
+	for my $field (qw(name superclasses roles immutable namespace_autoclean singleton)) {
 		$self->$field( $grid->GetCellValue( $row++, 1 ) );
 	}
 }
@@ -95,7 +117,7 @@ sub write_to_inspector {
 	my $grid = shift;
 
 	my $row = 0;
-	for my $field (qw(name superclasses roles immutable namespace_autoclean)) {
+	for my $field (qw(name superclasses roles immutable namespace_autoclean singleton)) {
 		$grid->SetCellValue( $row++, 1, $self->$field );
 	}
 }
@@ -107,7 +129,8 @@ sub get_grid_data {
 		{ name => Wx::gettext('Superclasses:') },
 		{ name => Wx::gettext('Roles:') },
 		{ name => Wx::gettext('Clean namespace?'), is_bool => 1 },
-		{ name => Wx::gettext('Make immutable?'), is_bool => 1 }
+		{ name => Wx::gettext('Make immutable?'), is_bool => 1 },
+		{ name => Wx::gettext('Singleton?'), is_bool => 1 },
 	];
 }
 

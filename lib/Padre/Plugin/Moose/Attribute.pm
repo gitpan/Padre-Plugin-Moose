@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Attribute;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -11,13 +11,28 @@ with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::CanProvideHelp';
 with 'Padre::Plugin::Moose::Role::CanHandleInspector';
 
-has 'access_type' => ( is => 'rw', isa => 'Str' );
-has 'type'        => ( is => 'rw', isa => 'Str' );
-has 'trigger'     => ( is => 'rw', isa => 'Str' );
-has 'required'    => ( is => 'rw', isa => 'Bool' );
+has 'access_type'   => ( is => 'rw', isa => 'Str' );
+has 'type'          => ( is => 'rw', isa => 'Str' );
+has 'trigger'       => ( is => 'rw', isa => 'Str' );
+has 'required'      => ( is => 'rw', isa => 'Bool' );
+has 'class_has'     => ( is => 'rw', isa => 'Bool' );
+has 'coerce'        => ( is => 'rw', isa => 'Bool' );
+has 'does'          => ( is => 'rw', isa => 'Str' );
+has 'weak_ref'      => ( is => 'rw', isa => 'Bool' );
+has 'lazy'          => ( is => 'rw', isa => 'Bool' );
+has 'builder'       => ( is => 'rw', isa => 'Str' );
+has 'default'       => ( is => 'rw', isa => 'Str' );
+has 'clearer'       => ( is => 'rw', isa => 'Str' );
+has 'predicate'     => ( is => 'rw', isa => 'Str' );
+has 'documentation' => ( is => 'rw', isa => 'Str' );
+
+my @FIELDS = qw(
+	name access_type type class_has required trigger coerce does weak_ref
+	lazy builder default clearer predicate documentation);
 
 sub generate_code {
 	my $self    = shift;
+	my $use_mouse = shift;
 	my $comment = shift;
 
 	my $has_code = '';
@@ -27,7 +42,8 @@ sub generate_code {
 	$has_code .= ("\trequired => 1,\n")                       if $self->required;
 	$has_code .= ( "\ttrigger => " . $self->trigger . ",\n" ) if defined $self->trigger && $self->trigger ne '';
 
-	return "has '" . $self->name . "'" . ( $has_code ne '' ? qq{ => (\n$has_code)} : q{} ) . ";\n";
+	my $has = ($self->class_has && not $use_mouse) ? 'class_has' : 'has';
+	return "$has '" . $self->name . "'" . ( $has_code ne '' ? qq{ => (\n$has_code)} : q{} ) . ";\n";
 }
 
 sub provide_help {
@@ -40,7 +56,7 @@ sub read_from_inspector {
 	my $grid = shift;
 
 	my $row = 0;
-	for my $field (qw(name access_type type required trigger)) {
+	for my $field (@FIELDS) {
 		$self->$field( $grid->GetCellValue( $row++, 1 ) );
 	}
 }
@@ -50,7 +66,7 @@ sub write_to_inspector {
 	my $grid = shift;
 
 	my $row = 0;
-	for my $field (qw(name type access_type trigger required)) {
+	for my $field (@FIELDS) {
 		$grid->SetCellValue( $row++, 1, $self->$field );
 	}
 }
@@ -65,8 +81,18 @@ sub get_grid_data {
 				qw(Any Item Bool Maybe[] Undef Defined Value Str Num Int ClassName RoleName Ref ScalarRef[] ArrayRef[] HashRef[] CodeRef RegexpRef GlobRef FileHandle Object)
 			]
 		},
-		{ name => Wx::gettext('Required:'), is_bool => 1 },
+		{ name => Wx::gettext('Class Attribute?'), is_bool => 1},
+		{ name => Wx::gettext('Required?'), is_bool => 1 },
 		{ name => Wx::gettext('Trigger:') },
+		{ name => Wx::gettext('Coerce?'), is_bool => 1 },
+		{ name => Wx::gettext('Does role:') },
+		{ name => Wx::gettext('Weak Ref?'), is_bool => 1 },
+		{ name => Wx::gettext('lazy?'), is_bool => 1 },
+		{ name => Wx::gettext('Builder:') },
+		{ name => Wx::gettext('Default:') },
+		{ name => Wx::gettext('Clearer:') },
+		{ name => Wx::gettext('Predicate:') },
+		{ name => Wx::gettext('Documentation:') },
 	];
 }
 

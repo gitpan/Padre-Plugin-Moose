@@ -14,7 +14,7 @@ use Padre::Wx 'Grid';
 use Padre::Wx::Role::Main ();
 use Padre::Wx::Editor ();
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 our @ISA     = qw{
 	Padre::Wx::Role::Main
 	Wx::Dialog
@@ -70,7 +70,7 @@ sub new {
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
-	$self->{inspector}->CreateGrid( 5, 2 );
+	$self->{inspector}->CreateGrid( 20, 2 );
 	$self->{inspector}->EnableEditing(1);
 	$self->{inspector}->EnableGridLines(1);
 	$self->{inspector}->EnableDragGridSize(0);
@@ -84,6 +84,7 @@ sub new {
 	$self->{inspector}->EnableDragRowSize(1);
 	$self->{inspector}->SetRowLabelAlignment( Wx::ALIGN_CENTRE, Wx::ALIGN_CENTRE );
 	$self->{inspector}->SetDefaultCellAlignment( Wx::ALIGN_LEFT, Wx::ALIGN_TOP );
+	$self->{inspector}->SetMinSize( [ -1, 100 ] );
 
 	Wx::Event::EVT_GRID_CELL_CHANGE(
 		$self->{inspector},
@@ -279,6 +280,22 @@ sub new {
 		-1,
 	);
 
+	$self->{use_mouse_checkbox} = Wx::CheckBox->new(
+		$self,
+		-1,
+		Wx::gettext("use Mouse?"),
+		Wx::DefaultPosition,
+		Wx::DefaultSize,
+	);
+
+	Wx::Event::EVT_CHECKBOX(
+		$self,
+		$self->{use_mouse_checkbox},
+		sub {
+			shift->on_use_mouse_checkbox(@_);
+		},
+	);
+
 	$self->{comments_checkbox} = Wx::CheckBox->new(
 		$self,
 		-1,
@@ -361,7 +378,7 @@ sub new {
 	);
 	$tree_sizer->Add( $self->{tree}, 1, Wx::ALL | Wx::EXPAND, 5 );
 
-	my $inspector_size = Wx::StaticBoxSizer->new(
+	my $inspector_sizer = Wx::StaticBoxSizer->new(
 		Wx::StaticBox->new(
 			$self,
 			-1,
@@ -369,12 +386,12 @@ sub new {
 		),
 		Wx::VERTICAL,
 	);
-	$inspector_size->Add( $self->{inspector}, 0, Wx::ALL, 5 );
-	$inspector_size->Add( $self->{help}, 1, Wx::ALL | Wx::EXPAND, 5 );
+	$inspector_sizer->Add( $self->{inspector}, 0, Wx::ALL | Wx::EXPAND, 5 );
+	$inspector_sizer->Add( $self->{help}, 1, Wx::ALL | Wx::EXPAND, 5 );
 
 	my $left_sizer = Wx::BoxSizer->new(Wx::VERTICAL);
 	$left_sizer->Add( $tree_sizer, 1, Wx::EXPAND, 5 );
-	$left_sizer->Add( $inspector_size, 1, Wx::EXPAND, 5 );
+	$left_sizer->Add( $inspector_sizer, 1, Wx::EXPAND, 5 );
 
 	my $container_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
 	$container_sizer->Add( $self->{add_class_button}, 0, Wx::ALIGN_CENTER_HORIZONTAL | Wx::ALL, 2 );
@@ -425,9 +442,19 @@ sub new {
 	);
 	$preview_sizer->Add( $self->{preview}, 1, Wx::ALL | Wx::EXPAND, 5 );
 
+	my $code_generation_options_sizer = Wx::StaticBoxSizer->new(
+		Wx::StaticBox->new(
+			$self,
+			-1,
+			Wx::gettext("Code Generation Options:"),
+		),
+		Wx::HORIZONTAL,
+	);
+	$code_generation_options_sizer->Add( $self->{use_mouse_checkbox}, 0, Wx::ALL, 5 );
+	$code_generation_options_sizer->Add( $self->{comments_checkbox}, 0, Wx::ALL, 5 );
+	$code_generation_options_sizer->Add( $self->{sample_code_checkbox}, 0, Wx::ALL, 5 );
+
 	my $button_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
-	$button_sizer->Add( $self->{comments_checkbox}, 0, Wx::ALL, 5 );
-	$button_sizer->Add( $self->{sample_code_checkbox}, 0, Wx::ALL, 5 );
 	$button_sizer->Add( 0, 0, 1, Wx::EXPAND, 5 );
 	$button_sizer->Add( $self->{close_button}, 0, Wx::ALL, 2 );
 	$button_sizer->Add( $self->{reset_button}, 0, Wx::ALL, 2 );
@@ -437,6 +464,7 @@ sub new {
 	my $right_sizer = Wx::BoxSizer->new(Wx::VERTICAL);
 	$right_sizer->Add( $palette_sizer, 0, Wx::EXPAND, 0 );
 	$right_sizer->Add( $preview_sizer, 1, Wx::EXPAND, 10 );
+	$right_sizer->Add( $code_generation_options_sizer, 0, Wx::EXPAND, 5 );
 	$right_sizer->Add( $button_sizer, 0, Wx::EXPAND, 5 );
 
 	my $top_sizer = Wx::BoxSizer->new(Wx::HORIZONTAL);
@@ -494,6 +522,10 @@ sub on_add_method_button {
 
 sub on_add_destructor_button {
 	$_[0]->main->error('Handler method on_add_destructor_button for event add_destructor_button.OnButtonClick not implemented');
+}
+
+sub on_use_mouse_checkbox {
+	$_[0]->main->error('Handler method on_use_mouse_checkbox for event use_mouse_checkbox.OnCheckBox not implemented');
 }
 
 sub on_comments_checkbox {

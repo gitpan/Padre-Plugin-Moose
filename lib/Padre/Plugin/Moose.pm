@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 use Padre::Plugin ();
 
@@ -55,7 +55,7 @@ sub menu_plugins {
 				$self->{dialog}->run;
 				$self->{dialog}->ShowModal;
 			};
-			$main->error( sprintf(Wx::gettext('Error:%s'), $@) )
+			$main->error( sprintf( Wx::gettext('Error:%s'), $@ ) )
 				if $@;
 		},
 	);

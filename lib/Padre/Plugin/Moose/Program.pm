@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Program;
 use namespace::clean;
 use Moose;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::CanProvideHelp';
@@ -13,6 +13,7 @@ has 'classes' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 
 sub generate_code {
 	my $self        = shift;
+	my $use_mouse   = shift;
 	my $comments    = shift;
 	my $sample_code = shift;
 
@@ -20,12 +21,12 @@ sub generate_code {
 
 	# Generate roles
 	for my $role ( @{ $self->roles } ) {
-		$code .= $role->generate_code($comments);
+		$code .= $role->generate_code($use_mouse, $comments);
 	}
 
 	# Generate classes
 	for my $class ( @{ $self->classes } ) {
-		$code .= $class->generate_code($comments);
+		$code .= $class->generate_code($use_mouse, $comments);
 	}
 
 	# Generate sample usage code
@@ -33,7 +34,11 @@ sub generate_code {
 		$code .= "\npackage main;\n";
 		my $count = 1;
 		for my $class ( @{ $self->classes } ) {
-			$code .= "my \$o$count = " . $class->name . "->new;\n";
+			if($class->singleton) {
+				$code .= "my \$o$count = " . $class->name . "->instance;\n";
+			} else {
+				$code .= "my \$o$count = " . $class->name . "->new;\n";
+			}
 			$count++;
 		}
 	}
