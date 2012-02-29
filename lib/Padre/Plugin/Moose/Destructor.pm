@@ -1,4 +1,4 @@
-package Padre::Plugin::Moose::Method;
+package Padre::Plugin::Moose::Destructor;
 
 use Moose;
 use namespace::clean;

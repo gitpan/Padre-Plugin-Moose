@@ -1,4 +1,5 @@
 Changes
+eg/testcase.pl
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
@@ -13,6 +14,9 @@ lib/Padre/Plugin/Moose.pm
 lib/Padre/Plugin/Moose/Attribute.pm
 lib/Padre/Plugin/Moose/Class.pm
 lib/Padre/Plugin/Moose/ClassMember.pm
+lib/Padre/Plugin/Moose/Constructor.pm
+lib/Padre/Plugin/Moose/Destructor.pm
+lib/Padre/Plugin/Moose/Document.pm
 lib/Padre/Plugin/Moose/FBP/Main.pm
 lib/Padre/Plugin/Moose/Main.pm
 lib/Padre/Plugin/Moose/Method.pm
@@ -23,6 +27,7 @@ lib/Padre/Plugin/Moose/Role/CanHandleInspector.pm
 lib/Padre/Plugin/Moose/Role/CanProvideHelp.pm
 lib/Padre/Plugin/Moose/Role/HasClassMembers.pm
 lib/Padre/Plugin/Moose/Subtype.pm
+lib/Padre/Plugin/Moose/Util.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -31,4 +36,5 @@ MYMETA.yml
 Padre-Plugin-Moose.fbp
 padre.yml
 share/locale/Padre__Plugin__Moose-ar.po
+share/snippets.yml
 t/00-compile.t

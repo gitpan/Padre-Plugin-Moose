@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 use Padre::Plugin ();
 
@@ -15,6 +15,10 @@ our @ISA = 'Padre::Plugin';
 
 sub padre_interfaces {
 	'Padre::Plugin' => 0.94;
+}
+
+sub registered_documents {
+	'application/x-perl' => 'Padre::Plugin::Moose::Document',;
 }
 
 ######################################################################

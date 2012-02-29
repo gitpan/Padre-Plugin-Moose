@@ -18,6 +18,7 @@ meta-spec:
 name: Padre-Plugin-Moose
 no_index:
   directory:
+    - eg
     - inc
     - share
     - t
@@ -31,4 +32,4 @@ resources:
   homepage: http://padre.perlide.org/trac/wiki/PadrePluginMoose
   license: http://dev.perl.org/licenses/
   repository: http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose
-version: 0.14
+version: 0.15
