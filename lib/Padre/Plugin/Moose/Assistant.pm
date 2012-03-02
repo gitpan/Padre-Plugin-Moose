@@ -1,32 +1,36 @@
-package Padre::Plugin::Moose::Main;
+package Padre::Plugin::Moose::Assistant;
 
 use 5.008;
 use Moose;
+use Padre::Wx::Role::Dialog              ();
+use Padre::Plugin::Moose::FBP::Assistant ();
 
-use Padre::Plugin::Moose::FBP::Main ();
-use Padre::Wx::Role::Dialog         ();
-
-our $VERSION = '0.15';
-
-our @ISA = qw{
-	Padre::Plugin::Moose::FBP::Main
+our $VERSION = '0.16';
+our @ISA     = qw{
 	Padre::Wx::Role::Dialog
+	Padre::Plugin::Moose::FBP::Assistant
 };
 
 sub new {
-	my $class = shift;
-	my $main  = shift;
+	my $class  = shift;
+	my $plugin = shift;
 
-	my $self = $class->SUPER::new($main);
+
+	my $self = $class->SUPER::new( $plugin->main );
+
+	# Store the plugin object for future usage
+	$self->{plugin} = $plugin;
+
+	# Center & title
 	$self->CenterOnParent;
 	$self->SetTitle(
-		sprintf( Wx::gettext('Padre::Plugin::Moose %s - Written for fun by Ahmad M. Zawawi (azawawi)'), $VERSION ) );
+		sprintf( Wx::gettext('Moose Assistant %s - Written for fun by Ahmad M. Zawawi (azawawi)'), $VERSION ) );
 
+	# Restore defaults
 	$self->restore_defaults;
 
 	# TODO Bug Alias to fix the wxFormBuilder bug regarding this one
-	my $inspector = $self->{inspector};
-	$inspector->SetRowLabelSize(0);
+	$self->{inspector}->SetRowLabelSize(0);
 
 	# Hide the inspector as needed
 	$self->show_inspector(undef);
@@ -41,7 +45,8 @@ sub new {
 	# Syntax highlight Moose keywords after get_indentation_style is called :)
 	# TODO remove hack once Padre supports a better way
 	require Padre::Plugin::Moose::Util;
-	Padre::Plugin::Moose::Util::add_moose_keywords_highlighting($preview->{Document});
+	Padre::Plugin::Moose::Util::add_moose_keywords_highlighting( 
+		$preview->{Document}, $plugin->{config}->{type} );
 
 	$preview->Show(1);
 
@@ -50,7 +55,7 @@ sub new {
 	return $self;
 }
 
-# This is called before the dialog is shown
+# This is called to start and show the dialog
 sub run {
 	my $self = shift;
 
@@ -59,7 +64,7 @@ sub run {
 	my $theme = Padre::Wx::Theme->find($style)->clone;
 	$theme->apply( $self->{preview} );
 
-	return;
+	$self->ShowModal;
 }
 
 # Set up the events
@@ -68,8 +73,9 @@ sub on_grid_cell_change {
 
 	my $element = $self->{current_element} or return;
 
-	$element->read_from_inspector( $self->{inspector} )
-		if $element->does('Padre::Plugin::Moose::Role::CanHandleInspector');
+	if ( $element->does('Padre::Plugin::Moose::Role::CanHandleInspector') ) {
+		$element->read_from_inspector( $self->{inspector} );
+	}
 
 	$self->show_code_in_preview(0);
 
@@ -77,9 +83,8 @@ sub on_grid_cell_change {
 }
 
 sub on_tree_selection_change {
-	my $self  = shift;
-	my $event = shift;
-
+	my $self    = shift;
+	my $event   = shift;
 	my $tree    = $self->{tree};
 	my $item    = $event->GetItem or return;
 	my $element = $tree->GetPlData($item) or return;
@@ -131,10 +136,11 @@ sub show_code_in_preview {
 	eval {
 
 		# Generate code
-		my $code = $self->{program}->generate_code(
-			{   code_type   => $self->{generated_code_combo}->GetValue,
-				comments    => $self->{comments_checkbox}->IsChecked,
-				sample_code => $self->{sample_code_checkbox}->IsChecked,
+		my $config = $self->{plugin}->{config};
+		my $code   = $self->{program}->generate_code(
+			{   type        => $config->{type},
+				comments    => $config->{comments},
+				sample_code => $config->{sample_code},
 			}
 		);
 
@@ -147,8 +153,9 @@ sub show_code_in_preview {
 		# Update tree
 		$self->update_tree($should_select_item);
 	};
-	$self->error( sprintf( Wx::gettext('Error:%s'), $@ ) )
-		if $@;
+	if ($@) {
+		$self->error( sprintf( Wx::gettext('Error:%s'), $@ ) );
+	}
 
 	return;
 }
@@ -156,8 +163,9 @@ sub show_code_in_preview {
 sub update_tree {
 	my $self               = shift;
 	my $should_select_item = shift;
+	my $tree               = $self->{tree};
+	my $lock               = $self->lock_update($tree);
 
-	my $tree = $self->{tree};
 	$tree->DeleteAllItems;
 
 	my $selected_item;
@@ -204,60 +212,54 @@ sub update_tree {
 
 	# Select the tree node outside this event to
 	# prevent deep recurision
-	Wx::Event::EVT_IDLE(
-		$self,
-		sub {
-			$tree->SelectItem($selected_item);
-			Wx::Event::EVT_IDLE( $self, undef );
-		}
-		)
-		if $should_select_item
-			&& defined $selected_item;
+	if ( $should_select_item and defined $selected_item ) {
+		Wx::Event::EVT_IDLE(
+			$self,
+			sub {
+				$tree->SelectItem($selected_item);
+				Wx::Event::EVT_IDLE( $self, undef );
+			}
+		);
+	}
 
 	return;
 }
 
 sub show_inspector {
-	my $self    = shift;
-	my $element = shift;
+	my $self      = shift;
+	my $element   = shift;
+	my $inspector = $self->{inspector};
+	my $lock      = $self->lock_update($inspector);
 
+	$inspector->DeleteRows( 0, $inspector->GetNumberRows );
 	unless ( defined $element ) {
-		$self->{inspector}->GetContainingSizer->Show( 0, 0 );
 		return;
 	}
 
 	my $type = blessed($element);
-	if ( ( not defined $type ) or ( $type !~ /(Class|Role|Attribute|Subtype|Method|Constructor|Destructor)$/ ) ) {
+	unless ( defined $type and $type =~ /(Class|Role|Attribute|Subtype|Method|Constructor|Destructor)$/ ) {
 		$self->error("type: $element is not Class, Role, Attribute, Subtype or Method\n");
 		return;
 	}
 
-	my $inspector_data = $element->get_grid_data;
-	my $inspector      = $self->{inspector};
-	$inspector->DeleteRows( 0, $inspector->GetNumberRows );
-	$inspector->InsertRows( 0, scalar @$inspector_data );
-	my $row_index = 0;
-	for my $row (@$inspector_data) {
-		$inspector->SetCellValue( $row_index, 0, $row->{name} );
-		if ( defined $row->{is_bool} ) {
-			$inspector->SetCellEditor( $row_index, 1, Wx::GridCellBoolEditor->new );
-			$inspector->SetCellValue( $row_index, 1, 1 );
-		} elsif ( defined $row->{choices} ) {
-			$inspector->SetCellEditor( $row_index, 1, Wx::GridCellChoiceEditor->new( $row->{choices}, 1 ) );
-		}
-		$row_index++;
-	}
-
-	for my $row ( 0 .. $row_index - 1 ) {
-		$inspector->SetReadOnly( $row, 0 );
-	}
-
-	$self->{inspector}->GetContainingSizer->Show( 0, 1 );
-	$self->Layout;
+	my $data = $element->get_grid_data;
+	$inspector->InsertRows( 0, scalar @$data );
 	$inspector->SetGridCursor( 0, 1 );
+	foreach my $i ( 0 .. $#$data ) {
+		my $row = $data->[$i];
+		$inspector->SetCellValue( $i, 0, $row->{name} );
+		$inspector->SetReadOnly( $i, 0 );
+		if ( defined $row->{is_bool} ) {
+			$inspector->SetCellEditor( $i, 1, Wx::GridCellBoolEditor->new );
+			$inspector->SetCellValue( $i, 1, 1 );
+		} elsif ( defined $row->{choices} ) {
+			$inspector->SetCellEditor( $i, 1, Wx::GridCellChoiceEditor->new( $row->{choices}, 1 ) );
+		}
+	}
 
-	$element->write_to_inspector($inspector)
-		if $element->does('Padre::Plugin::Moose::Role::CanHandleInspector');
+	if ( $element->does('Padre::Plugin::Moose::Role::CanHandleInspector') ) {
+		$element->write_to_inspector($inspector);
+	}
 
 	return;
 }
@@ -421,18 +423,6 @@ sub on_add_destructor_button {
 	return;
 }
 
-sub on_use_mouse_checkbox {
-	$_[0]->show_code_in_preview(1);
-}
-
-sub on_sample_code_checkbox {
-	$_[0]->show_code_in_preview(1);
-}
-
-sub on_comments_checkbox {
-	$_[0]->show_code_in_preview(1);
-}
-
 sub on_reset_button_clicked {
 	my $self = shift;
 
@@ -475,10 +465,6 @@ sub restore_defaults {
 	$self->{program}         = Padre::Plugin::Moose::Program->new;
 	$self->{current_element} = $self->{program};
 	$self->{current_parent}  = $self->{program};
-
-	# Defaults
-	$self->{comments_checkbox}->SetValue(1);
-	$self->{sample_code_checkbox}->SetValue(1);
 
 	return;
 }
@@ -546,8 +532,50 @@ sub delete_element {
 	return;
 }
 
-sub on_generated_code_combo {
-	$_[0]->show_code_in_preview(1);
+sub on_preferences_button_clicked {
+	my $self = shift;
+
+	# Create a new preferences dialog
+	require Padre::Plugin::Moose::Preferences;
+	my $prefs = Padre::Plugin::Moose::Preferences->new($self);
+
+	# Update plugin variables from plugin's configuration hash
+	my $plugin = $self->{plugin};
+	my $config = $plugin->{config};
+	$prefs->{generated_code_combo}->SetValue( $config->{type} );
+	$prefs->{comments_checkbox}->SetValue( $config->{comments} );
+	$prefs->{sample_code_checkbox}->SetValue( $config->{sample_code} );
+	$prefs->{snippets_checkbox}->SetValue( $config->{snippets} );
+
+	# Preferences: go modal!
+	if ( $prefs->ShowModal == Wx::wxID_OK ) {
+
+		# Update configuration when the user hits the OK button
+		my $type               = $prefs->{generated_code_combo}->GetValue;
+		$config->{type}        = $type;
+		$config->{comments}    = $prefs->{comments_checkbox}->IsChecked;
+		$config->{sample_code} = $prefs->{sample_code_checkbox}->IsChecked;
+		$config->{snippets}    = $prefs->{snippets_checkbox}->IsChecked;
+		$plugin->config_write($config);
+
+		# Update tree and preview editor
+		$self->show_code_in_preview(1);
+
+		# Add moose et all keywords highlight to preview editor
+		require Padre::Plugin::Moose::Util;
+		Padre::Plugin::Moose::Util::add_moose_keywords_highlighting( 
+			$self->{preview}->{Document}, $type );
+
+		# Add moose et all keywords highlight to current editor
+		my $doc = $self->current->document or return;
+		if($doc->isa('Padre::Plugin::Moose::Document')) {
+			Padre::Plugin::Moose::Util::add_moose_keywords_highlighting(
+				$doc, $type);
+		}
+
+	}
+
+	return;
 }
 
 1;

@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Constructor;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -14,9 +14,9 @@ with 'Padre::Plugin::Moose::Role::CanHandleInspector';
 has 'modifier' => ( is => 'rw', isa => 'Str' );
 
 sub generate_moose_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
-	my $comments         = $code_gen_options->{comments};
+	my $self     = shift;
+	my $options  = shift;
+	my $comments = $options->{comments};
 
 	my $code;
 	my $name     = $self->name;
@@ -45,9 +45,9 @@ sub generate_mouse_code {
 }
 
 sub generate_moosex_declare_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
-	my $comments         = $code_gen_options->{comments};
+	my $self     = shift;
+	my $options  = shift;
+	my $comments = $options->{comments};
 
 	my $code;
 	my $name     = $self->name;

@@ -3,16 +3,16 @@ package Padre::Plugin::Moose::Role::CanGenerateCode;
 use Moose::Role;
 use namespace::clean;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 sub generate_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
-	my $code_type        = $code_gen_options->{code_type};
+	my $self    = shift;
+	my $options = shift;
+	my $type    = $options->{type};
 
-	return $self->generate_moose_code($code_gen_options)          if $code_type eq 'Moose';
-	return $self->generate_mouse_code($code_gen_options)          if $code_type eq 'Mouse';
-	return $self->generate_moosex_declare_code($code_gen_options) if $code_type eq 'MooseX::Declare';
+	return $self->generate_moose_code($options)          if $type eq 'Moose';
+	return $self->generate_mouse_code($options)          if $type eq 'Mouse';
+	return $self->generate_moosex_declare_code($options) if $type eq 'MooseX::Declare';
 }
 
 requires 'generate_moose_code';

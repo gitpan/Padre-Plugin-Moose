@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Role;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::HasClassMembers';
@@ -14,8 +14,8 @@ has 'name' => ( is => 'rw', isa => 'Str' );
 has 'requires_list' => ( is => 'rw', isa => 'Str', default => '' );
 
 sub generate_moose_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
+	my $self    = shift;
+	my $options = shift;
 
 	my $role     = $self->name;
 	my $requires = $self->requires_list;
@@ -38,7 +38,7 @@ sub generate_moose_code {
 	}
 
 	# Generate class members
-	$code .= $self->to_class_members_code($code_gen_options);
+	$code .= $self->to_class_members_code($options);
 
 	$code .= "\n1;\n\n";
 
@@ -47,8 +47,8 @@ sub generate_moose_code {
 
 # Generate Mouse code!
 sub generate_mouse_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
+	my $self    = shift;
+	my $options = shift;
 
 	my $role     = $self->name;
 	my $requires = $self->requires_list;
@@ -71,7 +71,7 @@ sub generate_mouse_code {
 	}
 
 	# Generate class members
-	$code .= $self->to_class_members_code($code_gen_options);
+	$code .= $self->to_class_members_code($options);
 
 	$code .= "\n1;\n\n";
 
@@ -79,8 +79,8 @@ sub generate_mouse_code {
 }
 
 sub generate_moosex_declare_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
+	my $self    = shift;
+	my $options = shift;
 
 	my $role     = $self->name;
 	my $requires = $self->requires_list;
@@ -103,7 +103,7 @@ sub generate_moosex_declare_code {
 	}
 
 	# Generate class members
-	$role_body .= $self->to_class_members_code($code_gen_options);
+	$role_body .= $self->to_class_members_code($options);
 
 	my @lines = split /\n/, $role_body;
 	for my $line (@lines) {

@@ -3,68 +3,152 @@ package Padre::Plugin::Moose;
 use 5.008;
 use strict;
 use warnings;
-
-our $VERSION = '0.15';
-
 use Padre::Plugin ();
 
-our @ISA = 'Padre::Plugin';
+our $VERSION = '0.16';
+our @ISA     = 'Padre::Plugin';
 
-######################################################################
-# Padre Integration
+# Child modules we need to unload when disabled
+use constant CHILDREN => qw{
+	Padre::Plugin::Moose::Role::CanGenerateCode
+	Padre::Plugin::Moose::Role::CanHandleInspector
+	Padre::Plugin::Moose::Role::CanProvideHelp
+	Padre::Plugin::Moose::Role::HasClassMembers
+	Padre::Plugin::Moose::Attribute
+	Padre::Plugin::Moose::Class
+	Padre::Plugin::Moose::ClassMember
+	Padre::Plugin::Moose::Constructor
+	Padre::Plugin::Moose::Destructor
+	Padre::Plugin::Moose::Document
+	Padre::Plugin::Moose::Method
+	Padre::Plugin::Moose::Program
+	Padre::Plugin::Moose::Role
+	Padre::Plugin::Moose::Subtype
+	Padre::Plugin::Moose::Util
+	Padre::Plugin::Moose::Assistant
+	Padre::Plugin::Moose::Preferences
+	Padre::Plugin::Moose::FBP::Assistant
+	Padre::Plugin::Moose::FBP::Preferences
+};
 
+# Store the current configuration object for _plugin_config consumers
+my $config;
+
+# Called when Padre wants to check what package versions this
+# plugin needs
 sub padre_interfaces {
-	'Padre::Plugin' => 0.94;
+	'Padre::Plugin'               => 0.94,
+		'Padre::Document'         => 0.94,
+		'Padre::Wx::Main'         => 0.94,
+		'Padre::Wx::Theme'        => 0.94,
+		'Padre::Wx::Editor'       => 0.94,
+		'Padre::Wx::Role::Main'   => 0.94,
+		'Padre::Wx::Role::Dialog' => 0.94,
+		;
 }
 
+# Called when Padre wants to knows what documents this Plugin supports
 sub registered_documents {
 	'application/x-perl' => 'Padre::Plugin::Moose::Document',;
 }
 
-######################################################################
-# Padre::Plugin Methods
-
+# Called when Padre wants a name for the plugin
 sub plugin_name {
 	Wx::gettext('Moose');
 }
 
+# Called by Padre::Plugin::Moose::Document to retrieve configuration
+sub _plugin_config {
+	return $config;
+}
+
+# Called when the plugin is enabled by Padre
+sub plugin_enable {
+	my $self = shift;
+
+	# Read the plugin configuration, and
+	$config = $self->config_read;
+	unless ( defined $config ) {
+
+		# No configuration, let us create it
+		$config = {};
+	}
+
+	# Make sure defaults are respected if they are undefined.
+	unless ( defined $config->{type} ) {
+		$config->{type} = 'Moose';
+	}
+	unless ( defined $config->{comments} ) {
+		$config->{comments} = 1;
+	}
+	unless ( defined $config->{sample_code} ) {
+		$config->{sample_code} = 1;
+	}
+	unless ( defined $config->{snippets} ) {
+		$config->{snippets} = 1;
+	}
+
+	# Write the plugin's configuration
+	$self->config_write($config);
+
+	# Update configuration attribute
+	$self->{config} = $config;
+
+	return 1;
+}
+
+# Called when the plugin is disabled by Padre
 sub plugin_disable {
 	my $self = shift;
 
 	# Destroy resident dialog
-	$self->{dialog}->Destroy if defined $self->{dialog};
+	if ( defined $self->{assistant} ) {
+		$self->{assistant}->Destroy;
+		$self->{assistant} = undef;
+	}
 
-	# TODO uncomment once Padre 0.96 is released
-	#$_[0]->unload(
-	#    ( 'Padre::Plugin::Moose', 'Padre::Plugin::Moose::Main', 'Moose' ) );
-	for my $package ( ( 'Padre::Plugin::Moose', 'Padre::Plugin::Moose::Main', 'Moose' ) ) {
+	# TODO: Switch to Padre::Unload once Padre 0.96 is released
+	for my $package (CHILDREN) {
 		require Padre::Unload;
 		Padre::Unload->unload($package);
 	}
 }
 
-# The command structure to show in the Plugins menu
+# Called when Padre wants to display plugin menu items
 sub menu_plugins {
 	my $self      = shift;
 	my $main      = $self->main;
-	my $menu_item = Wx::MenuItem->new( undef, -1, $self->plugin_name . "...\tF8", );
+	my $menu_item = Wx::MenuItem->new( undef, -1, Wx::gettext('Moose Assistant') . "...\tF8", );
+
 	Wx::Event::EVT_MENU(
 		$main,
 		$menu_item,
 		sub {
-			eval {
-				require Padre::Plugin::Moose::Main;
-				$self->{dialog} = Padre::Plugin::Moose::Main->new($main)
-					unless defined $self->{dialog};
-				$self->{dialog}->run;
-				$self->{dialog}->ShowModal;
-			};
-			$main->error( sprintf( Wx::gettext('Error:%s'), $@ ) )
-				if $@;
+			$self->show_assistant;
 		},
 	);
 
 	return $menu_item;
+}
+
+# Shows the Moose assistant dialog. Creates it only once if needed
+sub show_assistant {
+	my $self = shift;
+
+	eval {
+		unless ( defined $self->{assistant} )
+		{
+			require Padre::Plugin::Moose::Assistant;
+			$self->{assistant} = Padre::Plugin::Moose::Assistant->new($self);
+		}
+	};
+	if ($@) {
+		$self->main->error( sprintf( Wx::gettext('Error: %s'), $@ ) );
+	} else {
+		$self->{assistant}->run;
+	}
+
+	return;
 }
 
 1;
@@ -75,37 +159,47 @@ __END__
 
 =head1 NAME
 
-Padre::Plugin::Moose - Moose support for Padre
+Padre::Plugin::Moose - Moose, Mouse and MooseX::Declare support for Padre
 
 =head1 SYNOPSIS
 
-	cpan Padre::Plugin::Moose;
+    cpan Padre::Plugin::Moose;
 
-Then use it via L<Padre>, The Perl IDE.
+Then use it via L<Padre>, The Perl IDE. Press F8.
 
 =head1 DESCRIPTION
 
 Once you enable this Plugin under Padre, you'll get a brand new menu with the following options:
 
-=head2 Moose...
+=head2 Moose Assistant
 
 Opens up a user-friendly dialog where you can add classes, roles, attributes, subtypes and methods.
 The dialog contains a tree of class/role elements that are created while it is open and a preview of
 generated Perl code. It also contains links to Moose manual, cookbook and website.
 
+=head2 Moose Preferences
+
+TODO describe Moose Preferences
+
+=head2 TextMate-style TAB triggered snippets
+
+TODO describe TextMate-style TAB triggered snippets
+
+=head2 Keyword Syntax Highlighting
+
+TODO describe Keyword Syntax Highlighting
+
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-padre-plugin-Moose at rt.cpan.org>, or through
+Please report any bugs or feature requests to C<bug-padre-plugin-moose at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Padre-Plugin-Moose>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
-	perldoc Padre::Plugin::Moose
-
+    perldoc Padre::Plugin::Moose
 
 You can also look for information at:
 
@@ -142,6 +236,17 @@ L<Moose>, L<Padre>
 Ahmad M. Zawawi <ahmad.zawawi@gmail.com>
 
 =back
+
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Adam Kennedy <adamk@cpan.org>
+
+=back
+
 
 =head1 COPYRIGHT AND LICENSE
 

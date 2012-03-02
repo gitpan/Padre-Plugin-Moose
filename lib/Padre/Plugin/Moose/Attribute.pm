@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Attribute;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -31,9 +31,9 @@ my @FIELDS = qw(
 	lazy builder default clearer predicate documentation);
 
 sub generate_moose_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
-	my $comment          = $code_gen_options->{comments};
+	my $self    = shift;
+	my $options = shift;
+	my $comment = $options->{comments};
 
 	my $has_code = '';
 	$has_code .= ( "\tis  => '" . $self->access_type . "',\n" )
@@ -48,9 +48,9 @@ sub generate_moose_code {
 
 # Generate Mouse code!
 sub generate_mouse_code {
-	my $self             = shift;
-	my $code_gen_options = shift;
-	my $comment          = $code_gen_options->{comments};
+	my $self    = shift;
+	my $options = shift;
+	my $comment = $options->{comments};
 
 	my $has_code = '';
 	$has_code .= ( "\tis  => '" . $self->access_type . "',\n" )
