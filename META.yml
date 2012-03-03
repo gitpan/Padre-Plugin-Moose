@@ -33,4 +33,4 @@ resources:
   homepage: http://padre.perlide.org/trac/wiki/PadrePluginMoose
   license: http://dev.perl.org/licenses/
   repository: http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose
-version: 0.16
+version: 0.17

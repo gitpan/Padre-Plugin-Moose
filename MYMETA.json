@@ -4,7 +4,7 @@
       "Ahmad M. Zawawi <ahmad.zawawi@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Install version 1.06, CPAN::Meta::Converter version 2.112150",
+   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150",
    "license" : [
       "perl_5"
    ],
@@ -15,10 +15,8 @@
    "name" : "Padre-Plugin-Moose",
    "no_index" : {
       "directory" : [
-         "eg",
-         "inc",
-         "share",
-         "t"
+         "t",
+         "inc"
       ]
    },
    "prereqs" : {
@@ -31,7 +29,7 @@
       },
       "configure" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "6.59"
+            "ExtUtils::MakeMaker" : 0
          }
       },
       "runtime" : {
@@ -45,17 +43,5 @@
       }
    },
    "release_status" : "stable",
-   "resources" : {
-      "bugtracker" : {
-         "web" : "http://padre.perlide.org/"
-      },
-      "homepage" : "http://padre.perlide.org/trac/wiki/PadrePluginMoose",
-      "license" : [
-         "http://dev.perl.org/licenses/"
-      ],
-      "repository" : {
-         "url" : "http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose"
-      }
-   },
-   "version" : "0.16"
+   "version" : "0.17"
 }
