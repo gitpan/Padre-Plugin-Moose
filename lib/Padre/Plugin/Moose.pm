@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Padre::Plugin ();
 
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 our @ISA     = 'Padre::Plugin';
 
 # Child modules we need to unload when disabled
@@ -229,23 +229,13 @@ L<Moose>, L<Padre>
 
 =head1 AUTHORS
 
-=over 4
-
-=item *
-
 Ahmad M. Zawawi <ahmad.zawawi@gmail.com>
-
-=back
 
 =head1 CONTRIBUTORS
 
-=over 4
-
-=item *
-
 Adam Kennedy <adamk@cpan.org>
 
-=back
+Kevin Dawson E<lt>bowtie@cpan.orgE<gt>
 
 
 =head1 COPYRIGHT AND LICENSE

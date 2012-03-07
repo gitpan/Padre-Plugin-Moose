@@ -41,5 +41,6 @@ share/locale/Padre__Plugin__Moose-ar.po
 share/snippets/moose.yml
 share/snippets/moosex_declare.yml
 share/snippets/mouse.yml
+share/snippets/perl.yml
 t/00-compile.t
 t/01-eol.t

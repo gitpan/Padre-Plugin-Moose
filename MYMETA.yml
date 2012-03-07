@@ -3,7 +3,7 @@ abstract: 'Moose, Mouse and MooseX::Declare support for Padre'
 author:
   - 'Ahmad M. Zawawi <ahmad.zawawi@gmail.com>'
 build_requires:
-  ExtUtils::MakeMaker: 6.59
+  ExtUtils::MakeMaker: 6.62
   Locale::Msgfmt: 0.15
   Test::More: 0.47
 configure_requires:
@@ -25,4 +25,4 @@ requires:
   YAML: 0.80
   namespace::clean: 0.22
   perl: 5.008
-version: 0.17
+version: 0.18

@@ -3,7 +3,7 @@ package Padre::Plugin::Moose::Destructor;
 use Moose;
 use namespace::clean;
 
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -72,7 +72,7 @@ sub generate_moosex_declare_code {
 
 sub provide_help {
 	require Wx;
-	return Wx::gettext('A method is a subroutine within a class that defines behavior at runtime');
+	return Wx::gettext('A special type of subroutine called at the destruction of an object');
 }
 
 sub read_from_inspector {
