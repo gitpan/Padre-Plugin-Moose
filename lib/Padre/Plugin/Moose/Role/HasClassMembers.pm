@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Role::HasClassMembers;
 
 use Moose::Role;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 has 'attributes' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 has 'subtypes'   => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
@@ -36,6 +35,7 @@ sub to_class_members_code {
 	return $code;
 }
 
+no Moose::Role;
 1;
 
 __END__

@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Program;
 
 use Moose;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::CanProvideHelp';
@@ -110,4 +109,5 @@ sub provide_help {
 
 __PACKAGE__->meta->make_immutable;
 
+no Moose;
 1;

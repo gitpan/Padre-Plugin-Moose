@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Destructor;
 
 use Moose;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -53,9 +52,7 @@ sub generate_moosex_declare_code {
 	my $name     = $self->name;
 	my $modifier = $self->modifier;
 	if ( defined $modifier && $modifier eq 'around' ) {
-		$code = "around '$name' => sub {\n";
-		$code .= "\tmy \$orig = shift;\n";
-		$code .= "\tmy \$self = shift;\n";
+		$code = "around $name {\n";
 		$code .= "\n";
 		$code .= "\t# before calling $name\n" if $comments;
 		$code .= "\t\$self->\$orig(\@_)\n";
@@ -105,4 +102,5 @@ sub get_grid_data {
 
 __PACKAGE__->meta->make_immutable;
 
+no Moose;
 1;

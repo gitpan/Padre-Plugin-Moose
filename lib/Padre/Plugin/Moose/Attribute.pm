@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Attribute;
 
 use Moose;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 extends 'Padre::Plugin::Moose::ClassMember';
 
@@ -118,4 +117,5 @@ sub get_grid_data {
 
 __PACKAGE__->meta->make_immutable;
 
+no Moose;
 1;

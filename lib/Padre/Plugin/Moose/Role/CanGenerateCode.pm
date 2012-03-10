@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Role::CanGenerateCode;
 
 use Moose::Role;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 sub generate_code {
 	my $self    = shift;
@@ -19,6 +18,7 @@ requires 'generate_moose_code';
 requires 'generate_mouse_code';
 requires 'generate_moosex_declare_code';
 
+no Moose::Role;
 1;
 
 __END__

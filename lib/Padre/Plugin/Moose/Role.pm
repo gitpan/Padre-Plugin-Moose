@@ -1,9 +1,8 @@
 package Padre::Plugin::Moose::Role;
 
 use Moose;
-use namespace::clean;
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 with 'Padre::Plugin::Moose::Role::CanGenerateCode';
 with 'Padre::Plugin::Moose::Role::HasClassMembers';
@@ -14,11 +13,12 @@ has 'name' => ( is => 'rw', isa => 'Str' );
 has 'requires_list' => ( is => 'rw', isa => 'Str', default => '' );
 
 sub generate_moose_code {
-	my $self    = shift;
-	my $options = shift;
-
-	my $role     = $self->name;
-	my $requires = $self->requires_list;
+	my $self                = shift;
+	my $options             = shift;
+	my $comments            = $options->{comments};
+	my $namespace_autoclean = $options->{namespace_autoclean};
+	my $role                = $self->name;
+	my $requires            = $self->requires_list;
 
 	$role     =~ s/^\s+|\s+$//g;
 	$requires =~ s/^\s+|\s+$//g;
@@ -26,6 +26,14 @@ sub generate_moose_code {
 
 	my $code = "package $role;\n";
 	$code .= "\nuse Moose::Role;\n";
+
+	if ($namespace_autoclean) {
+		$code .= "use namespace::clean;";
+		$code .=
+			$comments
+			? " # Keep imports out of your namespace\n"
+			: "\n";
+	}
 
 	# If there is at least one subtype, we need to add this import
 	if ( scalar @{ $self->subtypes } ) {
@@ -40,18 +48,29 @@ sub generate_moose_code {
 	# Generate class members
 	$code .= $self->to_class_members_code($options);
 
-	$code .= "\n1;\n\n";
+	if ( scalar @{ $self->subtypes } ) {
+		$code .= "\nno Moose::Util::TypeConstraints;\n";
+	}
+
+	if ($namespace_autoclean) {
+		$code .= "\n1;\n\n";
+	} else {
+		if ( scalar @{ $self->subtypes } ) {
+			$code .= "\nno Moose::Util::TypeConstraints;\n";
+		}
+		$code .= "\nno Moose::Role;\n1;\n\n";
+	}
 
 	return $code;
 }
 
 # Generate Mouse code!
 sub generate_mouse_code {
-	my $self    = shift;
-	my $options = shift;
-
-	my $role     = $self->name;
-	my $requires = $self->requires_list;
+	my $self                = shift;
+	my $options             = shift;
+	my $namespace_autoclean = $options->{namespace_autoclean};
+	my $role                = $self->name;
+	my $requires            = $self->requires_list;
 
 	$role     =~ s/^\s+|\s+$//g;
 	$requires =~ s/^\s+|\s+$//g;
@@ -59,6 +78,10 @@ sub generate_mouse_code {
 
 	my $code = "package $role;\n";
 	$code .= "\nuse Mouse::Role;\n";
+
+	if ($namespace_autoclean) {
+		$code .= "use namespace::clean;\n";
+	}
 
 	# If there is at least one subtype, we need to add this import
 	if ( scalar @{ $self->subtypes } ) {
@@ -73,15 +96,22 @@ sub generate_mouse_code {
 	# Generate class members
 	$code .= $self->to_class_members_code($options);
 
-	$code .= "\n1;\n\n";
+	if ($namespace_autoclean) {
+		$code .= "\n1;\n\n";
+	} else {
+		if ( scalar @{ $self->subtypes } ) {
+			$code .= "\nno Moose::Util::TypeConstraints;\n";
+		}
+		$code .= "\nno Mouse::Role;\n1;\n\n";
+	}
 
 	return $code;
 }
 
 sub generate_moosex_declare_code {
-	my $self    = shift;
-	my $options = shift;
-
+	my $self     = shift;
+	my $options  = shift;
+	my $comments = $options->{comments};
 	my $role     = $self->name;
 	my $requires = $self->requires_list;
 
@@ -111,6 +141,7 @@ sub generate_moosex_declare_code {
 	}
 	$role_body = join "\n", @lines;
 
+	# namespace::autoclean is implicit in { }
 	return "use MooseX::Declare;\nrole $role {\n$role_body\n}\n\n";
 }
 
@@ -149,4 +180,5 @@ sub get_grid_data {
 
 __PACKAGE__->meta->make_immutable;
 
+no Moose;
 1;

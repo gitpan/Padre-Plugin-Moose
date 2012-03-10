@@ -5,7 +5,7 @@ use Moose;
 use Padre::Wx::Role::Dialog              ();
 use Padre::Plugin::Moose::FBP::Assistant ();
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 our @ISA     = qw{
 	Padre::Wx::Role::Dialog
 	Padre::Plugin::Moose::FBP::Assistant
@@ -42,10 +42,12 @@ sub new {
 	$preview->{Document}->set_editor($preview);
 	$preview->SetLexer('application/x-perl');
 
-	# Syntax highlight Moose keywords after get_indentation_style is called :)
-	# TODO remove hack once Padre supports a better way
+	# Syntax highlight Moose keywords
 	require Padre::Plugin::Moose::Util;
-	Padre::Plugin::Moose::Util::add_moose_keywords_highlighting( $preview->{Document}, $plugin->{config}->{type} );
+	Padre::Plugin::Moose::Util::add_moose_keywords_highlighting(
+		$plugin->{config}->{type}, $preview->{Document},
+		$preview
+	);
 
 	$preview->Show(1);
 
@@ -137,9 +139,10 @@ sub show_code_in_preview {
 		# Generate code
 		my $config = $self->{plugin}->{config};
 		my $code   = $self->{program}->generate_code(
-			{   type        => $config->{type},
-				comments    => $config->{comments},
-				sample_code => $config->{sample_code},
+			{   type                => $config->{type},
+				comments            => $config->{comments},
+				sample_code         => $config->{sample_code},
+				namespace_autoclean => $config->{namespace_autoclean},
 			}
 		);
 
@@ -271,7 +274,6 @@ sub on_add_class_button {
 	my $class = Padre::Plugin::Moose::Class->new;
 	$class->name( "Class" . $self->{class_count}++ );
 	$class->immutable(1);
-	$class->namespace_autoclean(1);
 	push @{ $self->{program}->classes }, $class;
 
 	$self->{current_element} = $class;
@@ -544,17 +546,17 @@ sub on_preferences_button_clicked {
 	$prefs->{generated_code_combo}->SetValue( $config->{type} );
 	$prefs->{comments_checkbox}->SetValue( $config->{comments} );
 	$prefs->{sample_code_checkbox}->SetValue( $config->{sample_code} );
-	$prefs->{snippets_checkbox}->SetValue( $config->{snippets} );
+	$prefs->{namespace_autoclean_checkbox}->SetValue( $config->{namespace_autoclean} );
 
 	# Preferences: go modal!
 	if ( $prefs->ShowModal == Wx::wxID_OK ) {
 
 		# Update configuration when the user hits the OK button
 		my $type = $prefs->{generated_code_combo}->GetValue;
-		$config->{type}        = $type;
-		$config->{comments}    = $prefs->{comments_checkbox}->IsChecked;
-		$config->{sample_code} = $prefs->{sample_code_checkbox}->IsChecked;
-		$config->{snippets}    = $prefs->{snippets_checkbox}->IsChecked;
+		$config->{type}                = $type;
+		$config->{comments}            = $prefs->{comments_checkbox}->IsChecked;
+		$config->{sample_code}         = $prefs->{sample_code_checkbox}->IsChecked;
+		$config->{namespace_autoclean} = $prefs->{namespace_autoclean_checkbox}->IsChecked;
 		$plugin->config_write($config);
 
 		# Update tree and preview editor
