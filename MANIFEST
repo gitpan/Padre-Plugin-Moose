@@ -26,7 +26,7 @@ lib/Padre/Plugin/Moose/Role/CanGenerateCode.pm
 lib/Padre/Plugin/Moose/Role/CanHandleInspector.pm
 lib/Padre/Plugin/Moose/Role/CanProvideHelp.pm
 lib/Padre/Plugin/Moose/Role/HasClassMembers.pm
-lib/Padre/Plugin/Moose/Role/NeedsSaveAsEvent.pm
+lib/Padre/Plugin/Moose/Role/NeedsPluginEvent.pm
 lib/Padre/Plugin/Moose/Subtype.pm
 lib/Padre/Plugin/Moose/Util.pm
 Makefile.PL
@@ -36,6 +36,7 @@ MYMETA.json
 MYMETA.yml
 Padre-Plugin-Moose.fbp
 padre.yml
+README
 share/locale/Padre__Plugin__Moose-ar.po
 t/00-compile.t
 t/01-eol.t

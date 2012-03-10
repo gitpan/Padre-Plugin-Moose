@@ -14,7 +14,7 @@ use Padre::Wx 'Grid';
 use Padre::Wx::Role::Main ();
 use Padre::Wx::Editor     ();
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 our @ISA     = qw{
 	Padre::Wx::Role::Main
 	Wx::Dialog
@@ -341,7 +341,7 @@ sub new {
 	$self->{reset_button} = Wx::Button->new(
 		$self,
 		-1,
-		Wx::gettext("Reset"),
+		Wx::gettext("Rese&t"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -373,7 +373,7 @@ sub new {
 	$self->{close_button} = Wx::Button->new(
 		$self,
 		Wx::ID_CANCEL,
-		Wx::gettext("Close"),
+		Wx::gettext("Cl&ose"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);

@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Padre::Plugin ();
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 our @ISA     = 'Padre::Plugin';
 
 # Child modules we need to unload when disabled
@@ -14,7 +14,7 @@ use constant CHILDREN => qw{
 	Padre::Plugin::Moose::Role::CanHandleInspector
 	Padre::Plugin::Moose::Role::CanProvideHelp
 	Padre::Plugin::Moose::Role::HasClassMembers
-	Padre::Plugin::Moose::Role::NeedsSaveAsEvent
+	Padre::Plugin::Moose::Role::NeedsPluginEvent
 	Padre::Plugin::Moose::Attribute
 	Padre::Plugin::Moose::Class
 	Padre::Plugin::Moose::ClassMember
@@ -81,10 +81,14 @@ sub plugin_enable {
 	# Update configuration attribute
 	$self->{config} = $config;
 
-	# Hook up to Padre's save-as event
+	# Generate missing Padre's events
 	# TODO remove once Padre 0.96 is released
-	require Padre::Plugin::Moose::Role::NeedsSaveAsEvent;
-	Padre::Plugin::Moose::Role::NeedsSaveAsEvent->meta->apply( $self->main );
+	require Padre::Plugin::Moose::Role::NeedsPluginEvent;
+	Padre::Plugin::Moose::Role::NeedsPluginEvent->meta->apply( $self->main );
+
+	# Highlight the current editor. This is needed when a plugin is enabled
+	# for the first time
+	$self->editor_changed;
 
 	return 1;
 }
@@ -181,7 +185,7 @@ Padre::Plugin::Moose - Moose, Mouse and MooseX::Declare support for Padre
 
 =head1 SYNOPSIS
 
-    cpan Padre::Plugin::Moose;
+    cpan Padre::Plugin::Moose
 
 Then use it via L<Padre>, The Perl IDE. Press F8.
 

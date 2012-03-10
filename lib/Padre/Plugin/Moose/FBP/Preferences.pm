@@ -13,7 +13,7 @@ use warnings;
 use Padre::Wx             ();
 use Padre::Wx::Role::Main ();
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 our @ISA     = qw{
 	Padre::Wx::Role::Main
 	Wx::Dialog
@@ -91,7 +91,7 @@ sub new {
 	$self->{ok_button} = Wx::Button->new(
 		$self,
 		Wx::ID_OK,
-		Wx::gettext("OK"),
+		Wx::gettext("&OK"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
@@ -99,7 +99,7 @@ sub new {
 	$self->{cancel_button} = Wx::Button->new(
 		$self,
 		Wx::ID_CANCEL,
-		Wx::gettext("Cancel"),
+		Wx::gettext("&Cancel"),
 		Wx::DefaultPosition,
 		Wx::DefaultSize,
 	);
