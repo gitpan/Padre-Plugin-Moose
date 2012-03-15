@@ -24,7 +24,7 @@
          "requires" : {
             "ExtUtils::MakeMaker" : "6.59",
             "Locale::Msgfmt" : "0.15",
-            "Test::More" : "0.47"
+            "Test::More" : "0.88"
          }
       },
       "configure" : {
@@ -41,5 +41,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.20"
+   "version" : "0.21"
 }

@@ -38,5 +38,6 @@ Padre-Plugin-Moose.fbp
 padre.yml
 README
 share/locale/Padre__Plugin__Moose-ar.po
+share/locale/Padre__Plugin__Moose-it-it.po
 t/00-compile.t
 t/01-eol.t

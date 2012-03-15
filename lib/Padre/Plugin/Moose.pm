@@ -5,11 +5,12 @@ use strict;
 use warnings;
 use Padre::Plugin ();
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 our @ISA     = 'Padre::Plugin';
 
 # Child modules we need to unload when disabled
 use constant CHILDREN => qw{
+	Padre::Plugin::Moose
 	Padre::Plugin::Moose::Role::CanGenerateCode
 	Padre::Plugin::Moose::Role::CanHandleInspector
 	Padre::Plugin::Moose::Role::CanProvideHelp
@@ -163,8 +164,9 @@ sub editor_enable {
 # Called when an editor is changed
 sub editor_changed {
 	my $self     = shift;
-	my $document = $self->current->document or return;
-	my $editor   = $self->current->editor or return;
+	my $current  = $self->current or return;
+	my $document = $current->document or return;
+	my $editor   = $current->editor or return;
 
 	# Only on Perl documents
 	return unless $document->isa('Padre::Document::Perl');

@@ -5,7 +5,7 @@ author:
 build_requires:
   ExtUtils::MakeMaker: 6.59
   Locale::Msgfmt: 0.15
-  Test::More: 0.47
+  Test::More: 0.88
 configure_requires:
   ExtUtils::MakeMaker: 6.59
 distribution_type: module
@@ -30,4 +30,4 @@ resources:
   homepage: http://padre.perlide.org/trac/wiki/PadrePluginMoose
   license: http://dev.perl.org/licenses/
   repository: http://svn.perlide.org/padre/trunk/Padre-Plugin-Moose
-version: 0.20
+version: 0.21
